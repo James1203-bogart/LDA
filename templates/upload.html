@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Upload — TopicLens{% endblock %}
+{% block page_title %}Upload Data{% endblock %}
+{% block breadcrumb %}
+<ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+    <li class="breadcrumb-item active">Upload</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<!-- Stepper -->
+<div class="stepper" data-aos="fade-up">
+    <div class="step active">
+        <div class="step-circle">1</div>
+        <span class="step-label">Upload</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step"><div class="step-circle">2</div><span class="step-label">Column</span></div>
+    <div class="step-connector"></div>
+    <div class="step"><div class="step-circle">3</div><span class="step-label">Preprocess</span></div>
+    <div class="step-connector"></div>
+    <div class="step"><div class="step-circle">4</div><span class="step-label">Configure</span></div>
+    <div class="step-connector"></div>
+    <div class="step"><div class="step-circle">5</div><span class="step-label">Results</span></div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="glass-card" data-aos="fade-up" data-aos-delay="50">
+            <div class="glass-card-header">
+                <h3 class="glass-card-title">
+                    <i class="bi bi-cloud-arrow-up-fill"></i>
+                    Upload Student Feedback Dataset
+                </h3>
+            </div>
+            <div class="glass-card-body">
+                <!-- Source selector tabs -->
+                <ul class="nav nav-pills mb-4" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#fileTab" type="button">
+                            <i class="bi bi-file-earmark-arrow-up me-1"></i>File Upload
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#googleTab" type="button">
+                            <i class="bi bi-google me-1"></i>Google Forms / Sheets
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <!-- ── File Upload Tab ──────────────────── -->
+                    <div class="tab-pane fade show active" id="fileTab">
+                        <p style="color:var(--c-text-secondary);font-size:.9rem;">
+                            Upload a CSV or Excel file containing open-ended student feedback responses.
+                        </p>
+
+                        <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                            <input type="hidden" name="upload_mode" value="file">
+                            <div class="mb-4">
+                                <div class="upload-zone" id="uploadZone">
+                                    <input class="form-control d-none" type="file" id="file" name="file"
+                                           accept=".csv,.xlsx,.xls" required>
+                                    <div class="upload-zone-content text-center" id="uploadContent">
+                                        <div class="upload-zone-icon">
+                                            <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+                                        </div>
+                                        <h5>Drag &amp; drop your file here</h5>
+                                        <p class="text-muted">or click to browse your computer</p>
+                                        <div class="file-badges">
+                                            <span class="file-badge">.CSV</span>
+                                            <span class="file-badge">.XLSX</span>
+                                            <span class="file-badge">.XLS</span>
+                                        </div>
+                                    </div>
+                                    <div class="upload-zone-content text-center d-none" id="fileInfo">
+                                        <div class="upload-zone-icon" style="background:var(--c-success-light);color:var(--c-success)">
+                                            <i class="bi bi-file-earmark-check-fill"></i>
+                                        </div>
+                                        <h5 id="fileName"></h5>
+                                        <p class="text-muted" id="fileSize"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-lg w-100" id="uploadBtn" disabled>
+                                <i class="bi bi-arrow-right-circle me-2"></i>Upload &amp; Continue
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- ── Google Forms / Sheets Tab ────────── -->
+                    <div class="tab-pane fade" id="googleTab">
+                        <p style="color:var(--c-text-secondary);font-size:.9rem;">
+                            Paste the URL of your Google Sheets spreadsheet (the one linked to your Google Forms responses).
+                            The spreadsheet must be shared as <strong>"Anyone with the link"</strong> can view.
+                        </p>
+
+                        <form method="POST" id="googleForm">
+                            <input type="hidden" name="upload_mode" value="google">
+                            <div class="mb-3">
+                                <label for="google_url" class="form-label">Google Sheets URL</label>
+                                <div class="input-group">
+                                    <span class="input-group-text" style="background:var(--c-primary-50);border-color:var(--c-border)">
+                                        <i class="bi bi-link-45deg" style="color:var(--c-primary)"></i>
+                                    </span>
+                                    <input type="url" class="form-control" id="google_url" name="google_url"
+                                           placeholder="https://docs.google.com/spreadsheets/d/..." required>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-lg w-100" id="googleBtn">
+                                <i class="bi bi-cloud-download me-2"></i>Import from Google Sheets
+                            </button>
+                        </form>
+
+                        <!-- How-to guide -->
+                        <div class="info-box info mt-4">
+                            <i class="bi bi-question-circle-fill"></i>
+                            <div>
+                                <strong>How to get the URL</strong>
+                                <ol class="mb-0 mt-1" style="padding-left:18px;font-size:.85rem;">
+                                    <li>Open your Google Form &rarr; click <strong>Responses</strong> tab.</li>
+                                    <li>Click the <strong>Google Sheets</strong> icon <i class="bi bi-table"></i> to view responses in Sheets.</li>
+                                    <li>In Google Sheets, click <strong>Share</strong> &rarr; set <em>"Anyone with the link"</em> to <strong>Viewer</strong>.</li>
+                                    <li>Copy the URL from your browser's address bar and paste it above.</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Guidelines -->
+        <div class="info-box info mt-3" data-aos="fade-up" data-aos-delay="100">
+            <i class="bi bi-lightbulb-fill"></i>
+            <div>
+                <strong>Tips</strong>
+                <ul class="mb-0 mt-1" style="padding-left:18px;font-size:.85rem;">
+                    <li>Include at least one column with open-ended text feedback.</li>
+                    <li>Best results with 50 + feedback entries.</li>
+                    <li>Maximum file size: 300MB.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    /* ── File upload logic ─────────────────────────── */
+    const zone = document.getElementById('uploadZone');
+    const input = document.getElementById('file');
+    const content = document.getElementById('uploadContent');
+    const info = document.getElementById('fileInfo');
+    const nameEl = document.getElementById('fileName');
+    const sizeEl = document.getElementById('fileSize');
+    const btn = document.getElementById('uploadBtn');
+
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        if (e.dataTransfer.files.length) { input.files = e.dataTransfer.files; show(e.dataTransfer.files[0]); }
+    });
+    input.addEventListener('change', () => { if (input.files.length) show(input.files[0]); });
+
+    function show(f) {
+        content.classList.add('d-none');
+        info.classList.remove('d-none');
+        nameEl.textContent = f.name;
+        sizeEl.textContent = (f.size / 1024).toFixed(1) + ' KB';
+        btn.disabled = false;
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', function() {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading\u2026';
+    });
+
+    /* ── Google Sheets logic ──────────────────────── */
+    document.getElementById('googleForm').addEventListener('submit', function() {
+        var gb = document.getElementById('googleBtn');
+        gb.disabled = true;
+        gb.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importing from Google Sheets\u2026';
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Compare — TopicLens{% endblock %}
+{% block page_title %}Compare{% endblock %}
+{% block breadcrumb %}
+<ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('results', analysis_id=analysis_id) }}">Results</a></li>
+    <li class="breadcrumb-item active">Compare</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- LDA Topics -->
+    <div class="col-md-6" data-aos="fade-up">
+        <div class="glass-card h-100">
+            <div class="glass-card-header" style="padding-bottom:16px;border-bottom:3px solid var(--c-primary)">
+                <h3 class="glass-card-title"><i class="bi bi-cpu-fill"></i> LDA-Generated Topics</h3>
+            </div>
+            <div class="glass-card-body">
+                {% for topic in topics %}
+                <div class="mb-3">
+                    <span class="badge-topic">Topic {{ topic.topic_id }}</span>
+                    <div class="d-flex flex-wrap gap-1 mt-2">
+                        {% for word, weight in topic.word_weight_pairs[:8] %}
+                        <span class="topic-pill topic-pill-primary" style="font-size:.8rem">{{ word }} <small>{{ weight }}</small></span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% if not loop.last %}<hr style="margin:12px 0">{% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Upload -->
+    <div class="col-md-6" data-aos="fade-up" data-aos-delay="50">
+        <div class="glass-card h-100">
+            <div class="glass-card-header" style="padding-bottom:16px;border-bottom:3px solid var(--c-text-muted)">
+                <h3 class="glass-card-title"><i class="bi bi-pencil-square"></i> Manual Coding</h3>
+            </div>
+            <div class="glass-card-body">
+                {% if has_manual %}
+                    <div class="info-box success mb-3">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>Manual coding file uploaded. Columns: {{ manual_columns|join(', ') }}</span>
+                    </div>
+                    <p style="color:var(--c-text-secondary);font-size:.9rem">
+                        Compare the manually coded themes with the LDA-generated topics to validate the automated analysis.
+                    </p>
+                {% else %}
+                    <p style="color:var(--c-text-secondary);font-size:.9rem" class="mb-3">
+                        Upload a file with manually coded themes to compare with LDA results.
+                    </p>
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="manual_file" class="form-label">Upload Manual Coding File</label>
+                            <input type="file" class="form-control" id="manual_file" name="manual_file"
+                                   accept=".csv,.xlsx,.xls" required>
+                            <small style="color:var(--c-text-muted)">CSV or Excel with feedback and manual theme columns.</small>
+                        </div>
+                        <button type="submit" class="btn btn-outline-secondary">
+                            <i class="bi bi-upload me-2"></i>Upload Manual Coding
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="text-center mt-4">
+    <a href="{{ url_for('results', analysis_id=analysis_id) }}" class="btn btn-outline-primary">
+        <i class="bi bi-arrow-left me-2"></i>Back to Results
+    </a>
+</div>
+{% endblock %}

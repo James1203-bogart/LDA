@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}About — TopicLens{% endblock %}
+{% block page_title %}About{% endblock %}
+{% block breadcrumb %}
+<ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+    <li class="breadcrumb-item active">About</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="about-card" data-aos="fade-up">
+            <h4>Topic Modeling of Student Feedback</h4>
+            <p style="color:var(--c-text-muted);margin-bottom:16px">Using Latent Dirichlet Allocation (LDA)</p>
+            <p style="color:var(--c-text-secondary);line-height:1.7">
+                This web-based system analyzes student feedback using
+                <strong>Latent Dirichlet Allocation (LDA)</strong>, a probabilistic topic modeling
+                algorithm, to automatically identify dominant themes from unstructured textual data.
+                It provides actionable insights to enhance educational quality by extracting
+                recurring themes, evaluating topic quality, and presenting results through
+                interactive visualizations.
+            </p>
+        </div>
+
+        <div class="about-card" data-aos="fade-up" data-aos-delay="50">
+            <h5><i class="bi bi-gear-wide-connected"></i> System Features</h5>
+            <ul style="line-height:2;color:var(--c-text-secondary)">
+                <li><strong>Data Upload</strong> — Import feedback from CSV or Excel files</li>
+                <li><strong>Text Preprocessing</strong> — Cleaning, tokenization, stop-word removal, lemmatization</li>
+                <li><strong>LDA Topic Modeling</strong> — Automatic extraction of latent topics</li>
+                <li><strong>Model Evaluation</strong> — Coherence scores, perplexity, per-topic coherence</li>
+                <li><strong>Optimal Topic Discovery</strong> — Automatic search for the best k</li>
+                <li><strong>Visualizations</strong> — Word clouds, bar charts, pie charts</li>
+                <li><strong>Report Export</strong> — Download results as Excel or CSV</li>
+                <li><strong>Manual Comparison</strong> — Compare LDA results with manually coded themes</li>
+            </ul>
+        </div>
+
+        <div class="about-card" data-aos="fade-up" data-aos-delay="100">
+            <h5><i class="bi bi-stack"></i> Technology Stack</h5>
+            <div class="tech-grid">
+                <div>
+                    <h6 style="color:var(--c-text-muted);font-size:.82rem;text-transform:uppercase;letter-spacing:.04em">Backend</h6>
+                    <ul class="tech-list">
+                        <li>Python / Flask</li>
+                        <li>scikit-learn (LDA)</li>
+                        <li>NLTK (NLP preprocessing)</li>
+                        <li>Pandas (Data manipulation)</li>
+                    </ul>
+                </div>
+                <div>
+                    <h6 style="color:var(--c-text-muted);font-size:.82rem;text-transform:uppercase;letter-spacing:.04em">Frontend &amp; Visualization</h6>
+                    <ul class="tech-list">
+                        <li>Bootstrap 5</li>
+                        <li>Matplotlib</li>
+                        <li>WordCloud</li>
+                        <li>AOS Animations</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="about-card" data-aos="fade-up" data-aos-delay="150">
+            <h5><i class="bi bi-book-half"></i> Reference</h5>
+            <p style="color:var(--c-text-secondary);margin:0;line-height:1.7">
+                Latent Dirichlet Allocation (LDA) is a generative probabilistic topic model developed by
+                <strong>Blei, Ng, and Jordan (2003)</strong>. It assumes each document is a mixture of topics
+                and each topic is a distribution over words; by examining patterns of word co-occurrence,
+                the algorithm identifies clusters that represent underlying themes.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

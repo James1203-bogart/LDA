@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — TopicLens{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block breadcrumb %}
+<ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item active">Dashboard</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<section class="hero-section" data-aos="fade-up">
+    <div class="hero-content">
+        <h1 class="hero-title">Student Feedback<br>Topic Modeling</h1>
+        <p class="hero-subtitle">
+            Uncover hidden themes in student feedback using <strong>Latent Dirichlet Allocation (LDA)</strong>.
+            Upload your data, configure the model, and get evidence-based insights in minutes.
+        </p>
+        <div class="hero-actions">
+            <a href="{{ url_for('upload') }}" class="btn-hero btn-hero-primary">
+                <i class="bi bi-cloud-arrow-up-fill me-2"></i>Get Started
+            </a>
+            <a href="{{ url_for('about') }}" class="btn-hero btn-hero-outline">
+                Learn&nbsp;More
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Workflow Steps -->
+<h5 class="fw-700 mb-3" data-aos="fade-up" data-aos-delay="50">
+    <i class="bi bi-signpost-split me-2" style="color:var(--c-primary)"></i>How It Works
+</h5>
+
+<div class="stepper" data-aos="fade-up" data-aos-delay="100">
+    <div class="step">
+        <div class="step-circle">1</div>
+        <span class="step-label">Upload</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step">
+        <div class="step-circle">2</div>
+        <span class="step-label">Select Column</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step">
+        <div class="step-circle">3</div>
+        <span class="step-label">Preprocess</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step">
+        <div class="step-circle">4</div>
+        <span class="step-label">Configure LDA</span>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step">
+        <div class="step-circle">5</div>
+        <span class="step-label">View Results</span>
+    </div>
+</div>
+
+<!-- Features -->
+<h5 class="fw-700 mb-3 mt-4" data-aos="fade-up" data-aos-delay="150">
+    <i class="bi bi-stars me-2" style="color:var(--c-primary)"></i>Key Features
+</h5>
+
+<div class="feature-grid" data-aos="fade-up" data-aos-delay="200">
+    <div class="feature-card">
+        <div class="feature-icon" style="background:var(--c-primary-100);color:var(--c-primary)">
+            <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+        </div>
+        <h5>CSV & Excel Upload</h5>
+        <p>Drag-and-drop your survey data — supports CSV, XLSX, and XLS formats up to 16 MB.</p>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon" style="background:var(--c-success-light);color:var(--c-success)">
+            <i class="bi bi-text-indent-left"></i>
+        </div>
+        <h5>NLP Preprocessing</h5>
+        <p>Automated pipeline: tokenization, stop word removal, and lemmatization with custom stop-word support.</p>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon" style="background: #ede9fe; color: #7c3aed">
+            <i class="bi bi-cpu-fill"></i>
+        </div>
+        <h5>LDA Topic Discovery</h5>
+        <p>Choose your own k or let the system find the optimal number of topics automatically.</p>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon" style="background:var(--c-warning-light);color:var(--c-warning)">
+            <i class="bi bi-speedometer2"></i>
+        </div>
+        <h5>Model Evaluation</h5>
+        <p>Coherence scores, perplexity, and per-topic metrics so you can judge model quality at a glance.</p>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon" style="background:#cffafe;color:#0891b2">
+            <i class="bi bi-cloud-fill"></i>
+        </div>
+        <h5>Word Clouds & Charts</h5>
+        <p>Beautiful word clouds, bar charts, and pie charts generated for every topic automatically.</p>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon" style="background:var(--c-info-light);color:var(--c-info)">
+            <i class="bi bi-file-earmark-arrow-down-fill"></i>
+        </div>
+        <h5>Export Reports</h5>
+        <p>Download complete analysis reports in Excel or CSV, ready for inclusion in your thesis.</p>
+    </div>
+</div>
+{% endblock %}

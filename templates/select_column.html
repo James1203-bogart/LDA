@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Select Column — TopicLens{% endblock %}
+{% block page_title %}Select Column{% endblock %}
+{% block breadcrumb %}
+<ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('upload') }}">Upload</a></li>
+    <li class="breadcrumb-item active">Select Column</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<!-- Stepper -->
+<div class="stepper" data-aos="fade-up">
+    <div class="step completed"><div class="step-circle"><i class="bi bi-check"></i></div><span class="step-label">Upload</span></div>
+    <div class="step-connector done"></div>
+    <div class="step active"><div class="step-circle">2</div><span class="step-label">Column</span></div>
+    <div class="step-connector"></div>
+    <div class="step"><div class="step-circle">3</div><span class="step-label">Preprocess</span></div>
+    <div class="step-connector"></div>
+    <div class="step"><div class="step-circle">4</div><span class="step-label">Configure</span></div>
+    <div class="step-connector"></div>
+    <div class="step"><div class="step-circle">5</div><span class="step-label">Results</span></div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="info-box info mb-4" data-aos="fade-up">
+            <i class="bi bi-info-circle-fill"></i>
+            <div>
+                File: <strong>{{ filename }}</strong> — {{ row_count }} rows loaded.
+                Choose the column that contains the open-ended student feedback.
+            </div>
+        </div>
+
+        <div class="glass-card" data-aos="fade-up" data-aos-delay="50">
+            <div class="glass-card-header">
+                <h3 class="glass-card-title">
+                    <i class="bi bi-table"></i>
+                    Choose Feedback Column
+                </h3>
+            </div>
+            <div class="glass-card-body">
+                <form method="POST" id="colForm">
+                    {% for col in columns %}
+                    <div class="column-card {% if loop.first %}selected{% endif %}" data-col="{{ col }}">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="feedback_column"
+                                   id="col_{{ loop.index }}" value="{{ col }}"
+                                   {% if loop.first %}checked{% endif %}>
+                            <label class="form-check-label" for="col_{{ loop.index }}">{{ col }}</label>
+                        </div>
+                        <div class="column-sample">
+                            {% for val in column_previews[col] %}
+                            <div class="text-truncate">"{{ val[:180] }}"</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mt-3" id="colBtn">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Continue to Preprocessing
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.querySelectorAll('.column-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const radio = this.querySelector('input[type="radio"]');
+            radio.checked = true;
+            document.querySelectorAll('.column-card').forEach(c => c.classList.remove('selected'));
+            this.classList.add('selected');
+        });
+    });
+    document.getElementById('colForm').addEventListener('submit', function() {
+        const b = document.getElementById('colBtn');
+        b.disabled = true;
+        b.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Loading\u2026';
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,526 @@
+{% extends "base.html" %}
+{% block title %}Results — TopicLens{% endblock %}
+{% block page_title %}Results{% endblock %}
+{% block breadcrumb %}
+<ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+    <li class="breadcrumb-item active">Results</li>
+</ol>
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('export_report', analysis_id=analysis_id, format_type='excel') }}" class="btn btn-success btn-sm">
+    <i class="bi bi-file-earmark-excel me-1"></i>Excel
+</a>
+<a href="{{ url_for('export_report', analysis_id=analysis_id, format_type='csv') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-filetype-csv me-1"></i>CSV
+</a>
+<a href="{{ url_for('compare', analysis_id=analysis_id) }}" class="btn btn-outline-primary btn-sm">
+    <i class="bi bi-arrow-left-right me-1"></i>Compare
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Stepper -->
+<div class="stepper" data-aos="fade-up">
+    <div class="step completed"><div class="step-circle"><i class="bi bi-check"></i></div><span class="step-label">Upload</span></div>
+    <div class="step-connector done"></div>
+    <div class="step completed"><div class="step-circle"><i class="bi bi-check"></i></div><span class="step-label">Column</span></div>
+    <div class="step-connector done"></div>
+    <div class="step completed"><div class="step-circle"><i class="bi bi-check"></i></div><span class="step-label">Preprocess</span></div>
+    <div class="step-connector done"></div>
+    <div class="step completed"><div class="step-circle"><i class="bi bi-check"></i></div><span class="step-label">Configure</span></div>
+    <div class="step-connector done"></div>
+    <div class="step active"><div class="step-circle">5</div><span class="step-label">Results</span></div>
+</div>
+
+<!-- Metrics -->
+<div class="stat-grid mb-4" data-aos="fade-up" data-aos-delay="50">
+    <div class="stat-card">
+        <div class="stat-icon purple"><i class="bi bi-bullseye"></i></div>
+        <div>
+            <div class="stat-value">{{ evaluation.coherence_c_v }}</div>
+            <div class="stat-label">Coherence (c_v)</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="bi bi-graph-up-arrow"></i></div>
+        <div>
+            <div class="stat-value">{{ evaluation.coherence_u_mass }}</div>
+            <div class="stat-label">Coherence (u_mass)</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon amber"><i class="bi bi-lightning-charge-fill"></i></div>
+        <div>
+            <div class="stat-value">{{ evaluation.perplexity }}</div>
+            <div class="stat-label">Log Perplexity</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="bi bi-diagram-3-fill"></i></div>
+        <div>
+            <div class="stat-value">{{ num_topics }}</div>
+            <div class="stat-label">Topics (k)</div>
+        </div>
+    </div>
+</div>
+
+<!-- Interpretation -->
+{% if evaluation.interpretation %}
+<div class="interpretation-box mb-4" data-aos="fade-up" data-aos-delay="100">
+    <h6><i class="bi bi-lightbulb-fill me-2"></i>Model Interpretation</h6>
+    {% for note in evaluation.interpretation %}
+    <p>{{ note }}</p>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Pre-trained categories -->
+<div class="glass-card mb-4" data-aos="fade-up" data-aos-delay="110">
+    <div class="glass-card-header">
+        <h3 class="glass-card-title"><i class="bi bi-diagram-3-fill"></i> Pre-trained Categories</h3>
+        <span class="badge-light">3 categories &middot; 9 subtopics</span>
+    </div>
+    <div class="glass-card-body">
+        <div class="row g-3">
+            {% for category in category_summary %}
+            <div class="col-md-4">
+                <h6>{{ category.category }} <span class="badge-light">{{ category.document_count }}</span></h6>
+                <ul class="list-unstyled mb-0">
+                    {% for subtopic in category.subtopics %}
+                    <li class="d-flex justify-content-between py-1" style="color:var(--c-text-secondary);font-size:.9rem">
+                        <span>{{ subtopic.name }}</span><span>{{ subtopic.document_count }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" role="tablist" data-aos="fade-up" data-aos-delay="120">
+    <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#topicsTab" type="button">
+            <i class="bi bi-list-ul me-1"></i>Topics
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#sentimentsTab" type="button">
+            <i class="bi bi-emoji-smile-fill me-1"></i>Sentiments
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#chartsTab" type="button">
+            <i class="bi bi-bar-chart-fill me-1"></i>Charts
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#documentsTab" type="button">
+            <i class="bi bi-file-text-fill me-1"></i>Documents
+        </button>
+    </li>
+    {% if optimization %}
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#optimizationTab" type="button">
+            <i class="bi bi-graph-up me-1"></i>Optimization
+        </button>
+    </li>
+    {% endif %}
+</ul>
+
+<div class="tab-content">
+    <!-- Topics -->
+    <div class="tab-pane fade show active" id="topicsTab">
+        <div class="row g-3">
+            {% for topic in topics %}
+            <div class="col-md-6">
+                <div class="glass-card" data-aos="fade-up" data-aos-delay="{{ loop.index0 * 40 }}">
+                    <div class="glass-card-header">
+                        <div class="card-header-title">
+                            <span class="badge-topic">Topic {{ topic.topic_id }}</span>
+                            {% if evaluation.per_topic_coherence %}
+                            <small class="card-header-meta">Coh: {{ evaluation.per_topic_coherence[topic.topic_id] }}</small>
+                            {% endif %}
+                        </div>
+                        {% for d in distribution %}
+                            {% if per_topic_sentiment and topic.topic_id in per_topic_sentiment %}
+                            <small class="card-header-meta">Sent: {{ '%+.2f'|format(per_topic_sentiment[topic.topic_id]) }}</small>
+                            {% endif %}
+                            {% if d.topic_id == topic.topic_id %}
+                            <span class="badge-light">{{ d.document_count }} docs &middot; {{ d.percentage }}%</span>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <div class="glass-card-body">
+                        <div class="topic-pill-grid">
+                            {% for word, weight in topic.word_weight_pairs %}
+                            <span class="topic-pill topic-pill-primary">
+                                {{ word }} <small>{{ weight }}</small>
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Sentiments -->
+    <div class="tab-pane fade" id="sentimentsTab">
+        {% if rating_constructs %}
+        <div class="glass-card mb-4">
+            <div class="glass-card-header">
+                <h3 class="glass-card-title"><i class="bi bi-123"></i> Rating-Based Construct Sentiment</h3>
+                <span class="badge-light">1-2 Negative &middot; 3 Neutral &middot; 4-5 Positive</span>
+            </div>
+            <div class="glass-card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Construct</th>
+                                <th>Mean Rating</th>
+                                <th>Classification</th>
+                                <th>Responses</th>
+                                <th>Negative</th>
+                                <th>Neutral</th>
+                                <th>Positive</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for construct, summary in rating_constructs.items() %}
+                            <tr>
+                                <td>{{ construct }}</td>
+                                <td>{{ '%.2f'|format(summary.mean) }}</td>
+                                <td>
+                                    {% if summary.classification == 'negative' %}
+                                    <span class="badge-light text-danger">Negative</span>
+                                    {% elif summary.classification == 'positive' %}
+                                    <span class="badge-light text-success">Positive</span>
+                                    {% else %}
+                                    <span class="badge-light">Neutral</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ summary.response_count }}</td>
+                                <td>{{ summary.counts.negative }}</td>
+                                <td>{{ summary.counts.neutral }}</td>
+                                <td>{{ summary.counts.positive }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="stat-grid mb-4" data-aos="fade-up">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-emoji-laughing-fill"></i></div>
+                <div>
+                    <div class="stat-value">{{ sentiment_summary.positive }}</div>
+                    <div class="stat-label">Positive</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-emoji-neutral-fill"></i></div>
+                <div>
+                    <div class="stat-value">{{ sentiment_summary.neutral }}</div>
+                    <div class="stat-label">Neutral</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon red"><i class="bi bi-emoji-frown-fill"></i></div>
+                <div>
+                    <div class="stat-value">{{ sentiment_summary.negative }}</div>
+                    <div class="stat-label">Negative</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
+                <div>
+                    <div class="stat-value">{{ sentiment_summary.total }}</div>
+                    <div class="stat-label">Analyzed</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card mb-4">
+            <div class="glass-card-header">
+                <h3 class="glass-card-title"><i class="bi bi-pie-chart-fill"></i> Sentiment Distribution</h3>
+            </div>
+            <div class="glass-card-body">
+                {% set total = sentiment_summary.total or 1 %}
+                <div class="progress" style="height:28px;">
+                    {% if sentiment_summary.positive %}
+                    <div class="progress-bar bg-success" style="width:{{ (sentiment_summary.positive / total * 100)|round(1) }}%">
+                        {{ (sentiment_summary.positive / total * 100)|round(1) }}%
+                    </div>
+                    {% endif %}
+                    {% if sentiment_summary.neutral %}
+                    <div class="progress-bar bg-secondary" style="width:{{ (sentiment_summary.neutral / total * 100)|round(1) }}%">
+                        {{ (sentiment_summary.neutral / total * 100)|round(1) }}%
+                    </div>
+                    {% endif %}
+                    {% if sentiment_summary.negative %}
+                    <div class="progress-bar bg-danger" style="width:{{ (sentiment_summary.negative / total * 100)|round(1) }}%">
+                        {{ (sentiment_summary.negative / total * 100)|round(1) }}%
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card mb-4">
+            <div class="glass-card-header">
+                <h3 class="glass-card-title"><i class="bi bi-diagram-3-fill"></i> Average Sentiment per Topic</h3>
+            </div>
+            <div class="glass-card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Topic</th>
+                                <th>Avg. Compound Score</th>
+                                <th>Mood</th>
+                                <th>Feedback</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for topic in topics %}
+                            {% set tsd = topic_sentiment_docs.get(topic.topic_id, {}) %}
+                            {% set tsc = topic_sentiment_counts.get(topic.topic_id, {}) %}
+                            <tr>
+                                <td><span class="badge-topic">Topic {{ topic.topic_id }}</span></td>
+                                <td>
+                                    {% if per_topic_sentiment and topic.topic_id in per_topic_sentiment and per_topic_sentiment[topic.topic_id] is not none %}
+                                    {{ '%+.2f'|format(per_topic_sentiment[topic.topic_id]) }}
+                                    {% else %}
+                                    <span class="badge-light">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if per_topic_sentiment and topic.topic_id in per_topic_sentiment and per_topic_sentiment[topic.topic_id] is not none %}
+                                        {% set sc = per_topic_sentiment[topic.topic_id] %}
+                                        {% if sc >= 0.05 %}
+                                        <span class="badge-light text-success">Positive</span>
+                                        {% elif sc <= -0.05 %}
+                                        <span class="badge-light text-danger">Negative</span>
+                                        {% else %}
+                                        <span class="badge-light">Neutral</span>
+                                        {% endif %}
+                                    {% else %}
+                                    <span class="badge-light">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-secondary" type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#fb-topic-{{ topic.topic_id }}">
+                                        View feedback
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="collapse" id="fb-topic-{{ topic.topic_id }}">
+                                <td colspan="4" class="p-0">
+                                    <div class="p-3" style="background: rgba(0,0,0,0.03)">
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <h6 class="text-success mb-2">
+                                                    Positive ({{ tsc.get('positive', 0) }})
+                                                </h6>
+                                                <ul class="list-unstyled small" style="max-height:260px; overflow-y:auto;">
+                                                    {% for doc in tsd.get('positive', []) %}
+                                                    <li class="mb-2 pb-2 border-bottom">
+                                                        {{ doc.text }}
+                                                        <span class="badge-light">{{ '%+.2f'|format(doc.score) }}</span>
+                                                    </li>
+                                                    {% else %}
+                                                    <li class="text-muted">Wala.</li>
+                                                    {% endfor %}
+                                                    {% if tsc.get('positive', 0) > tsd.get('positive', [])|length %}
+                                                    <li class="text-muted">
+                                                        +{{ tsc.get('positive', 0) - tsd.get('positive', [])|length }} more not shown
+                                                    </li>
+                                                    {% endif %}
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <h6 class="mb-2">
+                                                    Neutral ({{ tsc.get('neutral', 0) }})
+                                                </h6>
+                                                <ul class="list-unstyled small" style="max-height:260px; overflow-y:auto;">
+                                                    {% for doc in tsd.get('neutral', []) %}
+                                                    <li class="mb-2 pb-2 border-bottom">
+                                                        {{ doc.text }}
+                                                        <span class="badge-light">{{ '%+.2f'|format(doc.score) }}</span>
+                                                    </li>
+                                                    {% else %}
+                                                    <li class="text-muted">Wala.</li>
+                                                    {% endfor %}
+                                                    {% if tsc.get('neutral', 0) > tsd.get('neutral', [])|length %}
+                                                    <li class="text-muted">
+                                                        +{{ tsc.get('neutral', 0) - tsd.get('neutral', [])|length }} more not shown
+                                                    </li>
+                                                    {% endif %}
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <h6 class="text-danger mb-2">
+                                                    Negative ({{ tsc.get('negative', 0) }})
+                                                </h6>
+                                                <ul class="list-unstyled small" style="max-height:260px; overflow-y:auto;">
+                                                    {% for doc in tsd.get('negative', []) %}
+                                                    <li class="mb-2 pb-2 border-bottom">
+                                                        {{ doc.text }}
+                                                        <span class="badge-light">{{ '%+.2f'|format(doc.score) }}</span>
+                                                    </li>
+                                                    {% else %}
+                                                    <li class="text-muted">Wala.</li>
+                                                    {% endfor %}
+                                                    {% if tsc.get('negative', 0) > tsd.get('negative', [])|length %}
+                                                    <li class="text-muted">
+                                                        +{{ tsc.get('negative', 0) - tsd.get('negative', [])|length }} more not shown
+                                                    </li>
+                                                    {% endif %}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="tab-pane fade" id="chartsTab">
+        <div class="glass-card mb-4">
+            <div class="glass-card-header">
+                <h3 class="glass-card-title"><i class="bi bi-bar-chart-fill"></i> Top Words per Topic</h3>
+            </div>
+            <div class="glass-card-body text-center">
+                <img src="data:image/png;base64,{{ bar_chart }}" class="chart-img" alt="Topic Bar Chart">
+            </div>
+        </div>
+
+        <div class="glass-card mb-4">
+            <div class="glass-card-header">
+                <h3 class="glass-card-title"><i class="bi bi-pie-chart-fill"></i> Document Distribution</h3>
+            </div>
+            <div class="glass-card-body text-center">
+                <img src="data:image/png;base64,{{ pie_chart }}" class="chart-img chart-img-large" alt="Pie Chart">
+            </div>
+        </div>
+
+        {% if per_topic_chart %}
+        <div class="glass-card mb-4">
+            <div class="glass-card-header">
+                <h3 class="glass-card-title"><i class="bi bi-speedometer"></i> Per-Topic Coherence</h3>
+            </div>
+            <div class="glass-card-body text-center">
+                <img src="data:image/png;base64,{{ per_topic_chart }}" class="chart-img" alt="Per-Topic Coherence">
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Documents -->
+    <div class="tab-pane fade" id="documentsTab">
+        <div class="glass-card">
+            <div class="glass-card-header">
+                <h3 class="glass-card-title"><i class="bi bi-file-text-fill"></i> Document-Topic Assignments (Top 20)</h3>
+            </div>
+            <div class="glass-card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width:56px">#</th>
+                                <th>Feedback Text</th>
+                                <th style="width:100px">Topic</th>
+                                <th style="width:100px">Probability</th>
+                                <th style="width:110px">Sentiment</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doc in doc_topic_preview %}
+                            <tr>
+                                <td style="color:var(--c-text-muted)">{{ doc.index + 1 }}</td>
+                                <td><small>{{ doc.text }}</small></td>
+                                <td><span class="badge-topic">Topic {{ doc.topic }}</span></td>
+                                <td><span class="badge-light">{{ doc.probability }}</span></td>
+                                <td>
+                                    {% if doc.sentiment is not none %}
+                                    <span class="badge-light">{{ '%+.2f'|format(doc.sentiment) }}</span>
+                                    {% else %}
+                                    <span class="badge-light">N/A</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Optimization -->
+    {% if optimization %}
+    <div class="tab-pane fade" id="optimizationTab">
+        {% if optimization_chart %}
+        <div class="glass-card mb-4">
+            <div class="glass-card-header">
+                <h3 class="glass-card-title"><i class="bi bi-graph-up"></i> Coherence by k</h3>
+            </div>
+            <div class="glass-card-body text-center">
+                <img src="data:image/png;base64,{{ optimization_chart }}" class="chart-img" alt="Optimization">
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="info-box success mb-4">
+            <i class="bi bi-trophy-fill"></i>
+            <div>
+                <strong>Optimal k = {{ optimization.optimal_k }}</strong>
+                — Best coherence: {{ optimization.best_coherence }}
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <div class="glass-card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>k (Topics)</th>
+                                <th>Coherence</th>
+                                <th>Perplexity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in optimization.results %}
+                            <tr {% if r.num_topics == optimization.optimal_k %}style="background:var(--c-success-light)"{% endif %}>
+                                <td>{{ r.num_topics }}</td>
+                                <td>{{ r.coherence_score }}</td>
+                                <td>{{ r.perplexity_score }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,10 @@
+Flask
+gunicorn
+pandas
+numpy
+nltk
+scikit-learn
+matplotlib
+wordcloud
+openpyxl
+requests

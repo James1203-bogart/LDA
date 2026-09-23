@@ -1,0 +1,17 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+uploads/*
+!uploads/.gitkeep
+results/*
+!results/.gitkeep
+analysis_store/
+.env
+*.egg-info/
+dist/
+build/
+*.pkl
+*.log
+.vercel
+.env*

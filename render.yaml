@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: topiclens
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python nltk_setup.py
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 300 --workers 1 --threads 4 --worker-class gthread
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: "3.12.3"
+      - key: FLASK_ENV
+        value: "production"
+      - key: RENDER
+        value: "true"

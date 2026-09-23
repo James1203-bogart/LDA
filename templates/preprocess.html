@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Preprocess — TopicLens{% endblock %}
+{% block page_title %}Preprocess Text{% endblock %}
+{% block breadcrumb %}
+<ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('upload') }}">Upload</a></li>
+    <li class="breadcrumb-item active">Preprocess</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<!-- Stepper -->
+<div class="stepper" data-aos="fade-up">
+    <div class="step completed"><div class="step-circle"><i class="bi bi-check"></i></div><span class="step-label">Upload</span></div>
+    <div class="step-connector done"></div>
+    <div class="step completed"><div class="step-circle"><i class="bi bi-check"></i></div><span class="step-label">Column</span></div>
+    <div class="step-connector done"></div>
+    <div class="step active"><div class="step-circle">3</div><span class="step-label">Preprocess</span></div>
+    <div class="step-connector"></div>
+    <div class="step"><div class="step-circle">4</div><span class="step-label">Configure</span></div>
+    <div class="step-connector"></div>
+    <div class="step"><div class="step-circle">5</div><span class="step-label">Results</span></div>
+</div>
+
+<div class="row justify-content-center g-4">
+    <div class="col-lg-7">
+        <div class="glass-card" data-aos="fade-up">
+            <div class="glass-card-header">
+                <h3 class="glass-card-title">
+                    <i class="bi bi-text-indent-left"></i>
+                    Text Preprocessing
+                </h3>
+            </div>
+            <div class="glass-card-body">
+                <div class="info-box info mb-4">
+                    <i class="bi bi-file-earmark-text-fill"></i>
+                    <span><strong>{{ text_count }}</strong> feedback entries loaded and ready for preprocessing.</span>
+                </div>
+
+                <!-- Preview -->
+                <h6 class="fw-700 mb-2">Raw Feedback Preview</h6>
+                <div class="table-responsive mb-4">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width:40px">#</th>
+                                <th>Feedback Text</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for text in preview %}
+                            <tr>
+                                <td style="color:var(--c-text-muted)">{{ loop.index }}</td>
+                                <td><small>{{ text[:300] }}{% if text|length > 300 %}&hellip;{% endif %}</small></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <form method="POST" id="preprocessForm">
+                    <div class="mb-4">
+                        <label for="extra_stopwords" class="form-label">
+                            Additional Stop Words <small style="color:var(--c-text-muted)">(optional, comma-separated)</small>
+                        </label>
+                        <input type="text" class="form-control" id="extra_stopwords" name="extra_stopwords"
+                               placeholder="e.g. professor, class, semester, course">
+                    </div>
+
+                    <button type="submit" class="btn btn-success btn-lg w-100" id="preprocessBtn">
+                        <i class="bi bi-play-fill me-2"></i>Run Preprocessing
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pipeline sidebar -->
+    <div class="col-lg-4" data-aos="fade-up" data-aos-delay="100">
+        <div class="glass-card">
+            <div class="glass-card-header">
+                <h3 class="glass-card-title"><i class="bi bi-gear-wide-connected"></i> Pipeline</h3>
+            </div>
+            <div class="glass-card-body">
+                <div class="pipeline-steps">
+                    <div class="pipeline-step"><i class="bi bi-check-circle-fill"></i> Text cleaning &amp; lowercasing</div>
+                    <div class="pipeline-step"><i class="bi bi-check-circle-fill"></i> Tokenization</div>
+                    <div class="pipeline-step"><i class="bi bi-check-circle-fill"></i> Stop-word removal</div>
+                    <div class="pipeline-step"><i class="bi bi-check-circle-fill"></i> Lemmatization</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.getElementById('preprocessForm').addEventListener('submit', function() {
+        const btn = document.getElementById('preprocessBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Preprocessing\u2026';
+    });
+</script>
+{% endblock %}
