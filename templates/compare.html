@@ -53,6 +53,7 @@
                         Upload a file with manually coded themes to compare with LDA results.
                     </p>
                     <form method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="action" value="upload_manual">
                         <div class="mb-3">
                             <label for="manual_file" class="form-label">Upload Manual Coding File</label>
                             <input type="file" class="form-control" id="manual_file" name="manual_file"
@@ -68,6 +69,101 @@
         </div>
     </div>
 </div>
+
+<section class="mt-4" aria-labelledby="human-evaluation-title">
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3 class="glass-card-title" id="human-evaluation-title">
+                <i class="bi bi-person-check-fill"></i> Human Evaluation of Topics
+            </h3>
+        </div>
+        <div class="glass-card-body">
+            <p style="color:var(--c-text-secondary);font-size:.9rem">
+                Ask qualified faculty members or academic personnel to review the top words and
+                representative feedback for each topic. Record a concise label and judge how well
+                it represents the comments. This expert review complements automated coherence
+                scores; it is not a substitute for them.
+            </p>
+
+            <form method="POST">
+                <input type="hidden" name="action" value="save_human_review">
+                <div class="mb-4">
+                    <label for="reviewer" class="form-label">Reviewer name or academic role</label>
+                    <input type="text" class="form-control" id="reviewer" name="reviewer"
+                           value="{{ human_reviewer }}" required>
+                </div>
+
+                {% for item in human_review_topics %}
+                {% set topic = item.topic %}
+                {% set review = item.review %}
+                <div class="border rounded p-3 mb-3">
+                    <h5><span class="badge-topic">Topic {{ topic.topic_id }}</span></h5>
+                    <div class="d-flex flex-wrap gap-1 mt-2 mb-3">
+                        {% for word, weight in topic.word_weight_pairs[:8] %}
+                        <span class="topic-pill topic-pill-primary" style="font-size:.8rem">
+                            {{ word }} <small>{{ weight }}</small>
+                        </span>
+                        {% endfor %}
+                    </div>
+
+                    <h6>Representative feedback</h6>
+                    <ul class="mb-3">
+                        {% for example in item.examples %}
+                        <li class="mb-2">{{ example.text }} <small class="text-muted">
+                            (topic probability: {{ '%.2f'|format(example.probability or 0) }})
+                        </small></li>
+                        {% else %}
+                        <li class="text-muted">No representative comments are available for this topic.</li>
+                        {% endfor %}
+                    </ul>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="label-{{ topic.topic_id }}" class="form-label">
+                                Human-assigned topic label
+                            </label>
+                            <input type="text" class="form-control"
+                                   id="label-{{ topic.topic_id }}"
+                                   name="label_{{ topic.topic_id }}"
+                                   value="{{ review.get('label', '') }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="assessment-{{ topic.topic_id }}" class="form-label">
+                                Does the label represent the feedback?
+                            </label>
+                            <select class="form-select" id="assessment-{{ topic.topic_id }}"
+                                    name="assessment_{{ topic.topic_id }}" required>
+                                <option value="">Select an assessment</option>
+                                <option value="accurate" {% if review.get('assessment') == 'accurate' %}selected{% endif %}>
+                                    Accurate
+                                </option>
+                                <option value="partially_accurate" {% if review.get('assessment') == 'partially_accurate' %}selected{% endif %}>
+                                    Partially accurate
+                                </option>
+                                <option value="inaccurate" {% if review.get('assessment') == 'inaccurate' %}selected{% endif %}>
+                                    Inaccurate
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label for="notes-{{ topic.topic_id }}" class="form-label">Reviewer notes</label>
+                            <textarea class="form-control" id="notes-{{ topic.topic_id }}"
+                                      name="notes_{{ topic.topic_id }}" rows="2">{{ review.get('notes', '') }}</textarea>
+                        </div>
+                    </div>
+                    {% if review.get('reviewed_at') %}
+                    <small class="text-muted d-block mt-2">Last evaluated: {{ review.reviewed_at }}</small>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save me-2"></i>Save Human Evaluation
+                </button>
+            </form>
+        </div>
+    </div>
+</section>
 
 <div class="text-center mt-4">
     <a href="{{ url_for('results', analysis_id=analysis_id) }}" class="btn btn-outline-primary">

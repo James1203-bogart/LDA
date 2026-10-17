@@ -668,13 +668,46 @@ def results(analysis_id):
 
 @app.route('/compare/<analysis_id>', methods=['GET', 'POST'])
 def compare(analysis_id):
-    """Compare manual coding with LDA results."""
+    """Compare manual coding and collect human topic evaluations."""
     analysis = get_analysis(analysis_id)
     if not analysis or 'topics' not in analysis:
         flash('Please run the model first.', 'danger')
         return redirect(url_for('upload'))
 
     if request.method == 'POST':
+        if request.form.get('action') == 'save_human_review':
+            assessments = {'accurate', 'partially_accurate', 'inaccurate'}
+            reviewer = request.form.get('reviewer', '').strip()
+            reviews = {}
+            if not reviewer:
+                flash('Enter the reviewer name or role before saving evaluations.', 'danger')
+                return redirect(request.url)
+
+            for topic in analysis['topics']:
+                topic_id = topic['topic_id']
+                field_suffix = str(topic_id)
+                label = request.form.get(f'label_{field_suffix}', '').strip()
+                assessment = request.form.get(f'assessment_{field_suffix}', '')
+                notes = request.form.get(f'notes_{field_suffix}', '').strip()
+                if not label or assessment not in assessments:
+                    flash('Provide a topic label and valid accuracy assessment for every topic.', 'danger')
+                    return redirect(request.url)
+                reviews[str(topic_id)] = {
+                    'label': label,
+                    'assessment': assessment,
+                    'notes': notes,
+                    'reviewer': reviewer,
+                    'reviewed_at': datetime.now().isoformat(timespec='seconds'),
+                }
+
+            analysis['human_review'] = {
+                'reviewer': reviewer,
+                'topics': reviews,
+            }
+            set_analysis(analysis_id, analysis)
+            flash('Human topic evaluations saved.', 'success')
+            return redirect(request.url)
+
         if 'manual_file' not in request.files:
             flash('No file uploaded.', 'danger')
             return redirect(request.url)
@@ -700,7 +733,38 @@ def compare(analysis_id):
 
         analysis['manual_df'] = manual_df
         analysis['manual_columns'] = list(manual_df.columns)
+        set_analysis(analysis_id, analysis)
         flash('Manual coding file uploaded.', 'success')
+
+    examples_by_topic = {}
+    for document in analysis.get('dominant_topics', []):
+        topic_id = document.get('dominant_topic')
+        if topic_id is None:
+            topic_id = document.get('topic')
+        index = document.get('document_index', document.get('index'))
+        raw_texts = analysis.get('filtered_raw', [])
+        if topic_id is None or not isinstance(index, int) or not 0 <= index < len(raw_texts):
+            continue
+        text = str(raw_texts[index])
+        examples_by_topic.setdefault(topic_id, []).append({
+            'text': text[:500] + ('...' if len(text) > 500 else ''),
+            'probability': document.get('probability', 0),
+        })
+
+    human_review = analysis.get('human_review', {})
+    human_review_topics = []
+    for topic in analysis['topics']:
+        topic_id = topic['topic_id']
+        examples = sorted(
+            examples_by_topic.get(topic_id, []),
+            key=lambda example: example['probability'] or 0,
+            reverse=True,
+        )[:3]
+        human_review_topics.append({
+            'topic': topic,
+            'examples': examples,
+            'review': human_review.get('topics', {}).get(str(topic_id), {}),
+        })
 
     return render_template(
         'compare.html',
@@ -708,6 +772,8 @@ def compare(analysis_id):
         topics=analysis['topics'],
         has_manual='manual_df' in analysis,
         manual_columns=analysis.get('manual_columns', []),
+        human_review_topics=human_review_topics,
+        human_reviewer=human_review.get('reviewer', ''),
     )
 
 
