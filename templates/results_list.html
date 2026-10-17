@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Results — TopicLens{% endblock %}
+{% block page_title %}Results{% endblock %}
+{% block breadcrumb %}
+<ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+    <li class="breadcrumb-item active">Results</li>
+</ol>
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('upload') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>New analysis
+</a>
+{% endblock %}
+
+{% block content %}
+<section class="history-intro" data-aos="fade-up">
+    <div>
+        <p class="history-eyebrow">ANALYSIS ARCHIVE</p>
+        <h2>Generated results</h2>
+        <p>Completed topic analyses, ready to revisit or export.</p>
+    </div>
+    <div class="history-count">
+        <span>{{ analyses|length }}</span>
+        <small>{% if analyses|length == 1 %}report{% else %}reports{% endif %}</small>
+    </div>
+</section>
+
+{% if analyses %}
+<div class="history-list" data-aos="fade-up" data-aos-delay="70">
+    {% for analysis in analyses %}
+    <article class="history-row">
+        <div class="history-file-icon"><i class="bi bi-file-earmark-bar-graph"></i></div>
+        <div class="history-main">
+            <a class="history-name" href="{{ url_for('results', analysis_id=analysis.analysis_id) }}">{{ analysis.filename }}</a>
+            <div class="history-meta">
+                {% if analysis.completed_at %}<span><i class="bi bi-calendar3"></i>{{ analysis.completed_at.strftime('%b %d, %Y') }}</span>{% endif %}
+                <span><i class="bi bi-files"></i>{{ analysis.row_count }} documents</span>
+                <span><i class="bi bi-diagram-3"></i>{{ analysis.topic_count }} topics</span>
+            </div>
+        </div>
+        <a class="history-open" href="{{ url_for('results', analysis_id=analysis.analysis_id) }}" aria-label="Open results for {{ analysis.filename }}" title="Open results">
+            <i class="bi bi-arrow-up-right"></i>
+        </a>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<section class="history-empty" data-aos="fade-up" data-aos-delay="70">
+    <div class="history-empty-icon"><i class="bi bi-inbox"></i></div>
+    <h3>No generated results yet</h3>
+    <p>Your completed analyses will appear here.</p>
+    <a href="{{ url_for('upload') }}" class="btn btn-primary">
+        <i class="bi bi-cloud-arrow-up me-2"></i>Start an analysis
+    </a>
+</section>
+{% endif %}
+{% endblock %}

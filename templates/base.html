@@ -35,6 +35,10 @@
                     <i class="bi bi-cloud-arrow-up-fill"></i>
                     <span>Upload Data</span>
                 </a>
+                <a href="{{ url_for('results_list') }}" class="sidebar-link {% if request.endpoint in ('results_list', 'results') %}active{% endif %}">
+                    <i class="bi bi-journal-check"></i>
+                    <span>Results</span>
+                </a>
                 <a href="{{ url_for('about') }}" class="sidebar-link {% if request.endpoint == 'about' %}active{% endif %}">
                     <i class="bi bi-journal-text"></i>
                     <span>About</span>
@@ -104,9 +108,9 @@
 
             <!-- Footer -->
             <footer class="main-footer">
-                <span>Developed and maintained by James Douglas F. Rosales</span>
+                <span>Sponsored by James Douglas F. Rosales</span>
                 <span class="footer-separator">|</span>
-                <span>PRMSU Computer Science</span>
+                <span>IT professional</span>
             </footer>
         </div>
     </div>

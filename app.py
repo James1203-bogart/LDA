@@ -11,6 +11,7 @@ import logging
 import re
 import uuid
 import pickle
+from datetime import datetime
 import pandas as pd
 import requests
 from flask import (
@@ -107,6 +108,40 @@ def set_analysis(analysis_id, analysis_data):
         logger.warning('Failed to persist analysis %s: %s', analysis_id, e)
 
 
+def get_completed_analyses():
+    analysis_ids = set(analysis_store)
+    try:
+        analysis_ids.update(
+            entry.name[:-4]
+            for entry in os.scandir(ANALYSIS_STORE_DIR)
+            if entry.is_file() and entry.name.endswith('.pkl')
+        )
+    except OSError:
+        pass
+
+    completed = []
+    for analysis_id in analysis_ids:
+        analysis = get_analysis(analysis_id)
+        if not analysis or not analysis.get('topics') or not analysis.get('distribution'):
+            continue
+
+        try:
+            modified_at = os.path.getmtime(_analysis_path(analysis_id))
+        except OSError:
+            modified_at = 0
+
+        completed.append({
+            'analysis_id': analysis_id,
+            'filename': analysis.get('filename') or 'Untitled dataset',
+            'row_count': analysis.get('row_count') or analysis.get('text_count', 0),
+            'topic_count': len(analysis['topics']),
+            'completed_at': datetime.fromtimestamp(modified_at) if modified_at else None,
+            'sort_key': modified_at,
+        })
+
+    return sorted(completed, key=lambda item: item['sort_key'], reverse=True)
+
+
 def get_dataframe_from_analysis(analysis):
     return analysis.get('dataframe')
 
@@ -120,6 +155,11 @@ def extract_google_sheet_id(url):
 
 
 # ─── Routes ──────────────────────────────────────────────────────────
+
+@app.route('/results')
+def results_list():
+    return render_template('results_list.html', analyses=get_completed_analyses())
+
 
 @app.route('/')
 def index():
@@ -444,6 +484,7 @@ def model_config(analysis_id):
             except Exception as e:
                 logger.warning('Failed to compute per-topic sentiment: %s', e)
 
+            set_analysis(analysis_id, analysis)
             flash('Pre-defined student feedback taxonomy applied with 3 categories and subtopics.', 'success')
             return redirect(url_for('results', analysis_id=analysis_id))
 
