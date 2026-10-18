@@ -3,9 +3,9 @@
 {% block page_title %}Compare{% endblock %}
 {% block breadcrumb %}
 <ol class="breadcrumb mb-0">
-    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
-    <li class="breadcrumb-item"><a href="{{ url_for('results', analysis_id=analysis_id) }}">Results</a></li>
-    <li class="breadcrumb-item active">Compare</li>
+    <li class="breadcrumb-item"><a href="{{ url_for('index') }}" data-i18n="breadcrumb_home">Home</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('results', analysis_id=analysis_id) }}" data-i18n="breadcrumb_results">Results</a></li>
+    <li class="breadcrumb-item active" data-i18n="breadcrumb_compare">Compare</li>
 </ol>
 {% endblock %}
 
@@ -15,13 +15,13 @@
     <div class="col-md-6" data-aos="fade-up">
         <div class="glass-card h-100">
             <div class="glass-card-header" style="padding-bottom:16px;border-bottom:3px solid var(--c-primary)">
-                <h3 class="glass-card-title"><i class="bi bi-cpu-fill"></i> LDA-Generated Topics</h3>
+                <h3 class="glass-card-title"><i class="bi bi-cpu-fill"></i> <span data-i18n="lda_topics">LDA-Generated Topics</span></h3>
             </div>
             <div class="glass-card-body">
                 {% for topic in topics %}
                 <div class="mb-3">
                     {% if topic.display_name %}
-                    <span class="badge-topic topic-name-badge">Topic {{ topic.topic_id }}: {{ topic.display_name }}</span>
+                    <span class="badge-topic topic-name-badge" data-topic-id="{{ topic.topic_id }}" data-topic-name="{{ topic.display_name }}">Topic {{ topic.topic_id }}: {{ topic.display_name }}</span>
                     {% else %}
                     <span class="badge-topic">Topic {{ topic.topic_id }}</span>
                     {% endif %}
@@ -41,31 +41,31 @@
     <div class="col-md-6" data-aos="fade-up" data-aos-delay="50">
         <div class="glass-card h-100">
             <div class="glass-card-header" style="padding-bottom:16px;border-bottom:3px solid var(--c-text-muted)">
-                <h3 class="glass-card-title"><i class="bi bi-pencil-square"></i> Manual Coding</h3>
+                <h3 class="glass-card-title"><i class="bi bi-pencil-square"></i> <span data-i18n="manual_coding">Manual Coding</span></h3>
             </div>
             <div class="glass-card-body">
                 {% if has_manual %}
                     <div class="info-box success mb-3">
                         <i class="bi bi-check-circle-fill"></i>
-                        <span>Manual coding file uploaded. Columns: {{ manual_columns|join(', ') }}</span>
+                        <span data-i18n="manual_uploaded">Manual coding file uploaded. Columns: {{ manual_columns|join(', ') }}</span>
                     </div>
-                    <p style="color:var(--c-text-secondary);font-size:.9rem">
+                    <p style="color:var(--c-text-secondary);font-size:.9rem" data-i18n="manual_compare">
                         Compare the manually coded themes with the LDA-generated topics to validate the automated analysis.
                     </p>
                 {% else %}
-                    <p style="color:var(--c-text-secondary);font-size:.9rem" class="mb-3">
+                    <p style="color:var(--c-text-secondary);font-size:.9rem" class="mb-3" data-i18n="manual_prompt">
                         Upload a file with manually coded themes to compare with LDA results.
                     </p>
                     <form method="POST" enctype="multipart/form-data">
                         <input type="hidden" name="action" value="upload_manual">
                         <div class="mb-3">
-                            <label for="manual_file" class="form-label">Upload Manual Coding File</label>
+                            <label for="manual_file" class="form-label" data-i18n="manual_file_label">Upload Manual Coding File</label>
                             <input type="file" class="form-control" id="manual_file" name="manual_file"
                                    accept=".csv,.xlsx,.xls" required>
-                            <small style="color:var(--c-text-muted)">CSV or Excel with feedback and manual theme columns.</small>
+                            <small style="color:var(--c-text-muted)" data-i18n="manual_hint">CSV or Excel with feedback and manual theme columns.</small>
                         </div>
                         <button type="submit" class="btn btn-outline-secondary">
-                            <i class="bi bi-upload me-2"></i>Upload Manual Coding
+                            <i class="bi bi-upload me-2"></i><span data-i18n="manual_upload_button">Upload Manual Coding</span>
                         </button>
                     </form>
                 {% endif %}
@@ -78,23 +78,33 @@
     <div class="glass-card">
         <div class="glass-card-header">
             <h3 class="glass-card-title" id="human-evaluation-title">
-                <i class="bi bi-person-check-fill"></i> Human Evaluation of Topics
+                <i class="bi bi-person-check-fill"></i> <span data-i18n="title">{{ human_eval_text.title }}</span>
             </h3>
         </div>
         <div class="glass-card-body">
-            <p style="color:var(--c-text-secondary);font-size:.9rem">
-                Ask qualified faculty members or academic personnel to review the top words and
-                representative feedback for each topic. Record a concise label and judge how well
-                it represents the comments. This expert review complements automated coherence
-                scores; it is not a substitute for them.
+            <p style="color:var(--c-text-secondary);font-size:.9rem" data-i18n="intro">
+                {{ human_eval_text.intro }}
             </p>
 
-            <form method="POST">
+            <form method="POST" id="human-evaluation-form">
                 <input type="hidden" name="action" value="save_human_review">
-                <div class="mb-4">
-                    <label for="reviewer" class="form-label">Reviewer name or academic role</label>
-                    <input type="text" class="form-control" id="reviewer" name="reviewer"
-                           value="{{ human_reviewer }}" required>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label for="reviewer" class="form-label" data-i18n="reviewer_label">{{ human_eval_text.reviewer_label }}</label>
+                        <input type="text" class="form-control" id="reviewer" name="reviewer"
+                               value="{{ human_reviewer }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="evaluation_language" class="form-label" data-i18n="language_label">{{ human_eval_text.language_label }}</label>
+                        <select class="form-select" id="evaluation_language" name="evaluation_language" required>
+                            <option value="multilingual" {% if human_review_language == 'multilingual' %}selected{% endif %} data-i18n-option="multilingual">Multilingual</option>
+                            <option value="tagalog" {% if human_review_language == 'tagalog' %}selected{% endif %} data-i18n-option="tagalog">Tagalog</option>
+                            <option value="english" {% if human_review_language == 'english' %}selected{% endif %} data-i18n-option="english">English</option>
+                            <option value="german" {% if human_review_language == 'german' %}selected{% endif %} data-i18n-option="german">Deutsch</option>
+                            <option value="russian" {% if human_review_language == 'russian' %}selected{% endif %} data-i18n-option="russian">Русский</option>
+                            <option value="arabic" {% if human_review_language == 'arabic' %}selected{% endif %} data-i18n-option="arabic">عربي</option>
+                        </select>
+                    </div>
                 </div>
 
                 {% for item in human_review_topics %}
@@ -103,7 +113,7 @@
                 <div class="border rounded p-3 mb-3">
                     <h5>
                         {% if topic.display_name %}
-                        <span class="badge-topic topic-name-badge">Topic {{ topic.topic_id }}: {{ topic.display_name }}</span>
+                        <span class="badge-topic topic-name-badge" data-topic-id="{{ topic.topic_id }}" data-topic-name="{{ topic.display_name }}">Topic {{ topic.topic_id }}: {{ topic.display_name }}</span>
                         {% else %}
                         <span class="badge-topic">Topic {{ topic.topic_id }}</span>
                         {% endif %}
@@ -116,21 +126,21 @@
                         {% endfor %}
                     </div>
 
-                    <h6>Representative feedback</h6>
+                    <h6 data-i18n="representative_feedback">{{ human_eval_text.representative_feedback }}</h6>
                     <ul class="mb-3">
                         {% for example in item.examples %}
                         <li class="mb-2">{{ example.text }} <small class="text-muted">
-                            (topic probability: {{ '%.2f'|format(example.probability or 0) }})
+                            (<span data-topic-probability="true">topic probability</span>: {{ '%.2f'|format(example.probability or 0) }})
                         </small></li>
                         {% else %}
-                        <li class="text-muted">No representative comments are available for this topic.</li>
+                        <li class="text-muted" data-i18n="no_examples">{{ human_eval_text.no_examples }}</li>
                         {% endfor %}
                     </ul>
 
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label for="label-{{ topic.topic_id }}" class="form-label">
-                                Human-assigned topic label
+                            <label for="label-{{ topic.topic_id }}" class="form-label" data-i18n="topic_label">
+                                {{ human_eval_text.topic_label }}
                             </label>
                             <input type="text" class="form-control"
                                    id="label-{{ topic.topic_id }}"
@@ -138,37 +148,37 @@
                                    value="{{ review.get('label', '') }}" required>
                         </div>
                         <div class="col-md-6">
-                            <label for="assessment-{{ topic.topic_id }}" class="form-label">
-                                Does the label represent the feedback?
+                            <label for="assessment-{{ topic.topic_id }}" class="form-label" data-i18n="assessment_label">
+                                {{ human_eval_text.assessment_label }}
                             </label>
                             <select class="form-select" id="assessment-{{ topic.topic_id }}"
                                     name="assessment_{{ topic.topic_id }}" required>
-                                <option value="">Select an assessment</option>
-                                <option value="accurate" {% if review.get('assessment') == 'accurate' %}selected{% endif %}>
-                                    Accurate
+                                <option value="" data-i18n-option="select_assessment">{{ human_eval_text.select_assessment }}</option>
+                                <option value="accurate" {% if review.get('assessment') == 'accurate' %}selected{% endif %} data-i18n-option="accurate">
+                                    {{ human_eval_text.accurate }}
                                 </option>
-                                <option value="partially_accurate" {% if review.get('assessment') == 'partially_accurate' %}selected{% endif %}>
-                                    Partially accurate
+                                <option value="partially_accurate" {% if review.get('assessment') == 'partially_accurate' %}selected{% endif %} data-i18n-option="partially_accurate">
+                                    {{ human_eval_text.partially_accurate }}
                                 </option>
-                                <option value="inaccurate" {% if review.get('assessment') == 'inaccurate' %}selected{% endif %}>
-                                    Inaccurate
+                                <option value="inaccurate" {% if review.get('assessment') == 'inaccurate' %}selected{% endif %} data-i18n-option="inaccurate">
+                                    {{ human_eval_text.inaccurate }}
                                 </option>
                             </select>
                         </div>
                         <div class="col-12">
-                            <label for="notes-{{ topic.topic_id }}" class="form-label">Reviewer notes</label>
+                            <label for="notes-{{ topic.topic_id }}" class="form-label" data-i18n="notes_label">{{ human_eval_text.notes_label }}</label>
                             <textarea class="form-control" id="notes-{{ topic.topic_id }}"
                                       name="notes_{{ topic.topic_id }}" rows="2">{{ review.get('notes', '') }}</textarea>
                         </div>
                     </div>
                     {% if review.get('reviewed_at') %}
-                    <small class="text-muted d-block mt-2">Last evaluated: {{ review.reviewed_at }}</small>
+                    <small class="text-muted d-block mt-2"><span data-i18n="last_evaluated">{{ human_eval_text.last_evaluated }}</span> {{ review.reviewed_at }}</small>
                     {% endif %}
                 </div>
                 {% endfor %}
 
                 <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-save me-2"></i>Save Human Evaluation
+                    <i class="bi bi-save me-2"></i><span data-i18n="save_button">{{ human_eval_text.save_button }}</span>
                 </button>
             </form>
         </div>
@@ -177,7 +187,262 @@
 
 <div class="text-center mt-4">
     <a href="{{ url_for('results', analysis_id=analysis_id) }}" class="btn btn-outline-primary">
-        <i class="bi bi-arrow-left me-2"></i>Back to Results
+        <i class="bi bi-arrow-left me-2"></i><span data-i18n="view_results">{{ human_eval_text.view_results }}</span>
     </a>
 </div>
+
+<script>
+const humanEvaluationTranslations = {
+    multilingual: {
+        breadcrumb_home: 'Home',
+        breadcrumb_results: 'Results',
+        breadcrumb_compare: 'Compare',
+        lda_topics: 'LDA-Generated Topics',
+        manual_coding: 'Manual Coding',
+        manual_uploaded: 'Manual coding file uploaded. Columns: ',
+        manual_compare: 'Compare the manually coded themes with the LDA-generated topics to validate the automated analysis.',
+        manual_prompt: 'Upload a file with manually coded themes to compare with LDA results.',
+        manual_file_label: 'Upload Manual Coding File',
+        manual_hint: 'CSV or Excel with feedback and manual theme columns.',
+        manual_upload_button: 'Upload Manual Coding',
+        title: 'Human Evaluation of Topics',
+        intro: 'Ask qualified faculty members or academic personnel to review the top words and representative feedback for each topic. Record a concise label and judge how well it represents the comments. This expert review complements automated coherence scores; it is not a substitute for them.',
+        reviewer_label: 'Reviewer name or academic role',
+        language_label: 'Evaluation language',
+        representative_feedback: 'Representative feedback',
+        no_examples: 'No representative comments are available for this topic.',
+        topic_probability: 'topic probability',
+        topic_label: 'Human-assigned topic label',
+        assessment_label: 'Does the label represent the feedback?',
+        notes_label: 'Reviewer notes',
+        select_assessment: 'Select an assessment',
+        accurate: 'Accurate',
+        partially_accurate: 'Partially accurate',
+        inaccurate: 'Inaccurate',
+        save_button: 'Save Human Evaluation',
+        view_results: 'Back to Results',
+        last_evaluated: 'Last evaluated:'
+    },
+    tagalog: {
+        breadcrumb_home: 'Home',
+        breadcrumb_results: 'Mga Resulta',
+        breadcrumb_compare: 'Ihambing',
+        lda_topics: 'Mga Paksa na Gawa ng LDA',
+        manual_coding: 'Manwal na Coding',
+        manual_uploaded: 'Na-upload ang file ng manual coding. Mga Kolum: ',
+        manual_compare: 'Ihambing ang mga manual na tema sa mga paksa ng LDA para i-validate ang awtomatikong pagsusuri.',
+        manual_prompt: 'Mag-upload ng file na may mga manual na tema para ikumpara sa mga resulta ng LDA.',
+        manual_file_label: 'I-upload ang File ng Manual Coding',
+        manual_hint: 'CSV o Excel na may feedback at manual na kolum ng tema.',
+        manual_upload_button: 'I-upload ang Manual Coding',
+        title: 'Pagsusuri ng Tao sa mga Paksa',
+        intro: 'Hilingin sa mga kwalipikadong faculty member o akademikong tauhan na suriin ang mga pinaka-kaugnay na salita at halimbawang tugon para sa bawat paksa. Itala ang maikling label at husgahan kung gaano ito nauugnay sa mga komento. Ang ekspertong pagsusuring ito ay sumusuporta sa mga awtomatikong coherence score; hindi ito pamalit sa mga ito.',
+        reviewer_label: 'Pangalan ng reviewer o papel sa akademya',
+        language_label: 'Wika ng pagsusuri',
+        representative_feedback: 'Kinatawan na feedback',
+        no_examples: 'Walang available na representatibong komento para sa paksang ito.',
+        topic_probability: 'probabilidad ng paksa',
+        topic_label: 'Label ng paksa na ibinigay ng tao',
+        assessment_label: 'Sinasalamin ba ng label ang feedback?',
+        notes_label: 'Mga tala ng reviewer',
+        select_assessment: 'Pumili ng pagmamarka',
+        accurate: 'Tumpak',
+        partially_accurate: 'Bahagyang tumpak',
+        inaccurate: 'Hindi tumpak',
+        save_button: 'I-save ang Pagsusuri ng Tao',
+        view_results: 'Bumalik sa mga Resulta',
+        last_evaluated: 'Huling sinusuri:'
+    },
+    english: {
+        breadcrumb_home: 'Home',
+        breadcrumb_results: 'Results',
+        breadcrumb_compare: 'Compare',
+        lda_topics: 'LDA-Generated Topics',
+        manual_coding: 'Manual Coding',
+        manual_uploaded: 'Manual coding file uploaded. Columns: ',
+        manual_compare: 'Compare the manually coded themes with the LDA-generated topics to validate the automated analysis.',
+        manual_prompt: 'Upload a file with manually coded themes to compare with LDA results.',
+        manual_file_label: 'Upload Manual Coding File',
+        manual_hint: 'CSV or Excel with feedback and manual theme columns.',
+        manual_upload_button: 'Upload Manual Coding',
+        title: 'Human Evaluation of Topics',
+        intro: 'Ask qualified faculty members or academic personnel to review the top words and representative feedback for each topic. Record a concise label and judge how well it represents the comments. This expert review complements automated coherence scores; it is not a substitute for them.',
+        reviewer_label: 'Reviewer name or academic role',
+        language_label: 'Evaluation language',
+        representative_feedback: 'Representative feedback',
+        no_examples: 'No representative comments are available for this topic.',
+        topic_probability: 'topic probability',
+        topic_label: 'Human-assigned topic label',
+        assessment_label: 'Does the label represent the feedback?',
+        notes_label: 'Reviewer notes',
+        select_assessment: 'Select an assessment',
+        accurate: 'Accurate',
+        partially_accurate: 'Partially accurate',
+        inaccurate: 'Inaccurate',
+        save_button: 'Save Human Evaluation',
+        view_results: 'Back to Results',
+        last_evaluated: 'Last evaluated:'
+    },
+    german: {
+        breadcrumb_home: 'Startseite',
+        breadcrumb_results: 'Ergebnisse',
+        breadcrumb_compare: 'Vergleichen',
+        lda_topics: 'LDA-generierte Themen',
+        manual_coding: 'Manuelle Kodierung',
+        manual_uploaded: 'Manuelle Kodierungsdatei hochgeladen. Spalten: ',
+        manual_compare: 'Vergleichen Sie die manuell kodierten Themen mit den LDA-generierten Themen, um die automatisierte Analyse zu validieren.',
+        manual_prompt: 'Laden Sie eine Datei mit manuell kodierten Themen hoch, um sie mit den LDA-Ergebnissen zu vergleichen.',
+        manual_file_label: 'Datei für manuelle Kodierung hochladen',
+        manual_hint: 'CSV oder Excel mit Feedback und manuell kodierten Themen.',
+        manual_upload_button: 'Manuelle Kodierung hochladen',
+        title: 'Menschliche Bewertung von Themen',
+        intro: 'Bitten Sie qualifizierte Fakultätsmitglieder oder akademische Mitarbeiter, die wichtigsten Wörter und repräsentativen Feedbacks für jedes Thema zu prüfen. Erfassen Sie ein kurzes Label und beurteilen Sie, wie gut es die Kommentare wiedergibt. Diese Expertenbewertung ergänzt automatisierte Kohärenzwerte; sie ersetzt sie nicht.',
+        reviewer_label: 'Name des Gutachters oder akademische Rolle',
+        language_label: 'Bewertungssprache',
+        representative_feedback: 'Repräsentatives Feedback',
+        no_examples: 'Für dieses Thema sind keine repräsentativen Kommentare verfügbar.',
+        topic_probability: 'Themenwahrscheinlichkeit',
+        topic_label: 'Vom Menschen zugewiesenes Themenlabel',
+        assessment_label: 'Spiegelt das Label das Feedback wider?',
+        notes_label: 'Anmerkungen des Gutachters',
+        select_assessment: 'Bewertung auswählen',
+        accurate: 'Korrekt',
+        partially_accurate: 'Teilweise korrekt',
+        inaccurate: 'Unkorrekt',
+        save_button: 'Menschliche Bewertung speichern',
+        view_results: 'Zurück zu den Ergebnissen',
+        last_evaluated: 'Zuletzt bewertet:'
+    },
+    russian: {
+        breadcrumb_home: 'Главная',
+        breadcrumb_results: 'Результаты',
+        breadcrumb_compare: 'Сравнить',
+        lda_topics: 'Темы, сгенерированные LDA',
+        manual_coding: 'Ручное кодирование',
+        manual_uploaded: 'Файл ручного кодирования загружен. Колонки: ',
+        manual_compare: 'Сравните вручную закодированные темы с темами, созданными LDA, чтобы проверить автоматический анализ.',
+        manual_prompt: 'Загрузите файл с вручную закодированными темами для сравнения с результатами LDA.',
+        manual_file_label: 'Загрузить файл ручного кодирования',
+        manual_hint: 'CSV или Excel с отзывами и колонками вручную закодированных тем.',
+        manual_upload_button: 'Загрузить ручное кодирование',
+        title: 'Человеческая оценка тем',
+        intro: 'Попросите квалифицированных преподавателей или академический персонал проверить ключевые слова и репрезентативные отзывы для каждой темы. Запишите краткое название и оцените, насколько оно соответствует комментариям. Эта экспертная оценка дополняет автоматические показатели связности; она не заменяет их.',
+        reviewer_label: 'Имя рецензента или академическая роль',
+        language_label: 'Язык оценки',
+        representative_feedback: 'Репрезентативный отзыв',
+        no_examples: 'Для этой темы нет репрезентативных комментариев.',
+        topic_probability: 'вероятность темы',
+        topic_label: 'Название темы, заданное человеком',
+        assessment_label: 'Отражает ли название отзыв?',
+        notes_label: 'Заметки рецензента',
+        select_assessment: 'Выберите оценку',
+        accurate: 'Точно',
+        partially_accurate: 'Частично верно',
+        inaccurate: 'Неверно',
+        save_button: 'Сохранить человеческую оценку',
+        view_results: 'Назад к результатам',
+        last_evaluated: 'Последняя оценка:'
+    },
+    arabic: {
+        breadcrumb_home: 'الرئيسية',
+        breadcrumb_results: 'النتائج',
+        breadcrumb_compare: 'مقارنة',
+        lda_topics: 'مواضيع LDA المُولدة',
+        manual_coding: 'الترميز اليدوي',
+        manual_uploaded: 'تم تحميل ملف الترميز اليدوي. الأعمدة: ',
+        manual_compare: 'قارن المواضيع المرمزة يدويًا مع مواضيع LDA المُولدة للتحقق من التحليل الآلي.',
+        manual_prompt: 'تحميل ملف يحتوي على مواضيع مرمزة يدويًا لمقارنته بنتائج LDA.',
+        manual_file_label: 'تحميل ملف الترميز اليدوي',
+        manual_hint: 'CSV أو Excel مع التعليقات وأعمدة الموضوعات اليدوية.',
+        manual_upload_button: 'تحميل الترميز اليدوي',
+        title: 'التقييم البشري للمواضيع',
+        intro: 'اطلب من أعضاء هيئة التدريس المؤهلين أو الموظفين الأكاديميين مراجعة الكلمات الأساسية والتعليقات التمثيلية لكل موضوع. سجل تسمية مختصرة وقم بتقييم مدى تمثيلها للتعليقات. هذا التقييم الخبرائي يكمل درجات الترابط الآلية؛ ولا يحل محلها.',
+        reviewer_label: 'اسم المراجع أو الدور الأكاديمي',
+        language_label: 'لغة التقييم',
+        representative_feedback: 'ملاحظات تمثيلية',
+        no_examples: 'لا توجد تعليقات تمثيلية متاحة لهذا الموضوع.',
+        topic_probability: 'احتمالية الموضوع',
+        topic_label: 'تسمية الموضوع المعينة من قبل الإنسان',
+        assessment_label: 'هل التسمية تمثل الملاحظات؟',
+        notes_label: 'ملاحظات المراجع',
+        select_assessment: 'اختر التقييم',
+        accurate: 'دقيق',
+        partially_accurate: 'دقيق جزئيًا',
+        inaccurate: 'غير دقيق',
+        save_button: 'حفظ التقييم البشري',
+        view_results: 'العودة إلى النتائج',
+        last_evaluated: 'آخر تقييم:'
+    }
+};
+
+const topicNameTranslations = {
+    multilingual: {},
+    tagalog: {
+        'Management of Teaching and Learning': 'Pamamahala ng Pagtuturo at Pag-aaral',
+        'Content Knowledge, Pedagogy, Technology': 'Kaalaman sa Nilalaman, Pedagogy, at Teknolohiya',
+        'Commitment and Transparency': 'Pangako at Transparency'
+    },
+    english: {},
+    german: {
+        'Management of Teaching and Learning': 'Management des Lehrens und Lernens',
+        'Content Knowledge, Pedagogy, Technology': 'Inhaltswissen, Pädagogik, Technologie',
+        'Commitment and Transparency': 'Engagement und Transparenz'
+    },
+    russian: {
+        'Management of Teaching and Learning': 'Управление обучением и преподаванием',
+        'Content Knowledge, Pedagogy, Technology': 'Знание содержания, педагогика, технологии',
+        'Commitment and Transparency': 'Приверженность и прозрачность'
+    },
+    arabic: {
+        'Management of Teaching and Learning': 'إدارة التعليم والتعلم',
+        'Content Knowledge, Pedagogy, Technology': 'المعرفة بالمحتوى، التربية، التكنولوجيا',
+        'Commitment and Transparency': 'الالتزام والشفافية'
+    }
+};
+
+function applyHumanEvaluationLanguage(language) {
+    const translations = humanEvaluationTranslations[language] || humanEvaluationTranslations.multilingual;
+    document.querySelectorAll('[data-i18n]').forEach((element) => {
+        const key = element.dataset.i18n;
+        if (translations[key]) {
+            element.textContent = translations[key];
+        }
+    });
+
+    document.querySelectorAll('[data-i18n-option]').forEach((element) => {
+        const key = element.dataset.i18nOption;
+        if (translations[key]) {
+            element.textContent = translations[key];
+        }
+    });
+
+    document.querySelectorAll('[data-topic-probability]').forEach((element) => {
+        if (translations.topic_probability) {
+            element.textContent = translations.topic_probability;
+        }
+    });
+
+    document.querySelectorAll('[data-topic-name]').forEach((element) => {
+        const originalName = element.dataset.topicName;
+        const topicMap = topicNameTranslations[language] || {};
+        const translated = topicMap[originalName] || originalName;
+        const topicId = element.dataset.topicId;
+        const prefix = 'Topic ' + topicId + ': ';
+        element.textContent = prefix + translated;
+    });
+
+    const select = document.getElementById('evaluation_language');
+    if (select) {
+        select.value = language;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const select = document.getElementById('evaluation_language');
+    if (!select) return;
+    const updateLanguage = () => applyHumanEvaluationLanguage(select.value);
+    select.addEventListener('change', updateLanguage);
+    updateLanguage();
+});
+</script>
 {% endblock %}

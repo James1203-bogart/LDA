@@ -171,6 +171,151 @@ def extract_google_sheet_id(url):
     return None
 
 
+def get_human_evaluation_language_pack(language='multilingual'):
+    """Return the translated UI labels for the human evaluation section."""
+    normalized = (language or 'multilingual').strip().lower()
+    packs = {
+        'multilingual': {
+            'title': 'Human Evaluation of Topics',
+            'intro': (
+                'Ask qualified faculty members or academic personnel to review the top words and '
+                'representative feedback for each topic. Record a concise label and judge how well '
+                'it represents the comments. This expert review complements automated coherence '
+                'scores; it is not a substitute for them.'
+            ),
+            'reviewer_label': 'Reviewer name or academic role',
+            'language_label': 'Evaluation language',
+            'topic_label': 'Human-assigned topic label',
+            'assessment_label': 'Does the label represent the feedback?',
+            'representative_feedback': 'Representative feedback',
+            'no_examples': 'No representative comments are available for this topic.',
+            'notes_label': 'Reviewer notes',
+            'select_assessment': 'Select an assessment',
+            'accurate': 'Accurate',
+            'partially_accurate': 'Partially accurate',
+            'inaccurate': 'Inaccurate',
+            'save_button': 'Save Human Evaluation',
+            'view_results': 'Back to Results',
+            'last_evaluated': 'Last evaluated:',
+        },
+        'tagalog': {
+            'title': 'Pagsusuri ng Tao sa mga Paksa',
+            'intro': (
+                'Hilingin sa mga kwalipikadong faculty member o akademikong tauhan na suriin ang mga '
+                'pinaka-kaugnay na salita at halimbawang tugon para sa bawat paksa. Itala ang maikling '
+                'label at husgahan kung gaano ito nauugnay sa mga komento. Ang ekspertong pagsusuring ito '
+                'ay sumusuporta sa mga awtomatikong coherence score; hindi ito pamalit sa mga ito.'
+            ),
+            'reviewer_label': 'Pangalan ng reviewer o papel sa akademya',
+            'language_label': 'Wika ng pagsusuri',
+            'topic_label': 'Label ng paksa na ibinigay ng tao',
+            'assessment_label': 'Sinasalamin ba ng label ang feedback?',
+            'representative_feedback': 'Kinatawan na feedback',
+            'no_examples': 'Walang available na representatibong komento para sa paksang ito.',
+            'notes_label': 'Mga tala ng reviewer',
+            'select_assessment': 'Pumili ng pagmamarka',
+            'accurate': 'Tumpak',
+            'partially_accurate': 'Bahagyang tumpak',
+            'inaccurate': 'Hindi tumpak',
+            'save_button': 'I-save ang Pagsusuri ng Tao',
+            'view_results': 'Bumalik sa mga Resulta',
+            'last_evaluated': 'Huling sinusuri:',
+        },
+        'english': {
+            'title': 'Human Evaluation of Topics',
+            'intro': (
+                'Ask qualified faculty members or academic personnel to review the top words and '
+                'representative feedback for each topic. Record a concise label and judge how well '
+                'it represents the comments. This expert review complements automated coherence '
+                'scores; it is not a substitute for them.'
+            ),
+            'reviewer_label': 'Reviewer name or academic role',
+            'language_label': 'Evaluation language',
+            'topic_label': 'Human-assigned topic label',
+            'assessment_label': 'Does the label represent the feedback?',
+            'representative_feedback': 'Representative feedback',
+            'no_examples': 'No representative comments are available for this topic.',
+            'notes_label': 'Reviewer notes',
+            'select_assessment': 'Select an assessment',
+            'accurate': 'Accurate',
+            'partially_accurate': 'Partially accurate',
+            'inaccurate': 'Inaccurate',
+            'save_button': 'Save Human Evaluation',
+            'view_results': 'Back to Results',
+            'last_evaluated': 'Last evaluated:',
+        },
+        'german': {
+            'title': 'Menschliche Bewertung von Themen',
+            'intro': (
+                'Bitten Sie qualifizierte Fakultätsmitglieder oder akademische Mitarbeiter, die '
+                'wichtigsten Wörter und repräsentativen Feedbacks für jedes Thema zu prüfen. Erfassen '
+                'Sie ein kurzes Label und beurteilen Sie, wie gut es die Kommentare wiedergibt. Diese '
+                'Expertenbewertung ergänzt automatisierte Kohärenzwerte; sie ersetzt sie nicht.'
+            ),
+            'reviewer_label': 'Name des Gutachters oder akademische Rolle',
+            'language_label': 'Bewertungssprache',
+            'topic_label': 'Vom Menschen zugewiesenes Themenlabel',
+            'assessment_label': 'Spiegelt das Label das Feedback wider?',
+            'representative_feedback': 'Repräsentatives Feedback',
+            'no_examples': 'Für dieses Thema sind keine repräsentativen Kommentare verfügbar.',
+            'notes_label': 'Anmerkungen des Gutachters',
+            'select_assessment': 'Bewertung auswählen',
+            'accurate': 'Korrekt',
+            'partially_accurate': 'Teilweise korrekt',
+            'inaccurate': 'Unkorrekt',
+            'save_button': 'Menschliche Bewertung speichern',
+            'view_results': 'Zurück zu den Ergebnissen',
+            'last_evaluated': 'Zuletzt bewertet:',
+        },
+        'russian': {
+            'title': 'Человеческая оценка тем',
+            'intro': (
+                'Попросите квалифицированных преподавателей или академический персонал проверить '
+                'ключевые слова и репрезентативные отзывы для каждой темы. Запишите краткое название '
+                'и оцените, насколько оно соответствует комментариям. Эта экспертная оценка дополняет '
+                'автоматические показатели связности; она не заменяет их.'
+            ),
+            'reviewer_label': 'Имя рецензента или академическая роль',
+            'language_label': 'Язык оценки',
+            'topic_label': 'Название темы, заданное человеком',
+            'assessment_label': 'Отражает ли название отзыв?',
+            'representative_feedback': 'Репрезентативный отзыв',
+            'no_examples': 'Для этой темы нет репрезентативных комментариев.',
+            'notes_label': 'Заметки рецензента',
+            'select_assessment': 'Выберите оценку',
+            'accurate': 'Точно',
+            'partially_accurate': 'Частично верно',
+            'inaccurate': 'Неверно',
+            'save_button': 'Сохранить человеческую оценку',
+            'view_results': 'Назад к результатам',
+            'last_evaluated': 'Последняя оценка:',
+        },
+        'arabic': {
+            'title': 'التقييم البشري للمواضيع',
+            'intro': (
+                'اطلب من أعضاء هيئة التدريس المؤهلين أو الموظفين الأكاديميين مراجعة الكلمات الأساسية '
+                'والتعليقات التمثيلية لكل موضوع. سجل تسمية مختصرة وقم بتقييم مدى تمثيلها للتعليقات. '
+                'هذا التقييم الخبرائي يكمل درجات الترابط الآلية؛ ولا يحل محلها.'
+            ),
+            'reviewer_label': 'اسم المراجع أو الدور الأكاديمي',
+            'language_label': 'لغة التقييم',
+            'topic_label': 'تسمية الموضوع المعينة من قبل الإنسان',
+            'assessment_label': 'هل التسمية تمثل الملاحظات؟',
+            'representative_feedback': 'ملاحظات تمثيلية',
+            'no_examples': 'لا توجد تعليقات تمثيلية متاحة لهذا الموضوع.',
+            'notes_label': 'ملاحظات المراجع',
+            'select_assessment': 'اختر التقييم',
+            'accurate': 'دقيق',
+            'partially_accurate': 'دقيق جزئيًا',
+            'inaccurate': 'غير دقيق',
+            'save_button': 'حفظ التقييم البشري',
+            'view_results': 'العودة إلى النتائج',
+            'last_evaluated': 'آخر تقييم:',
+        },
+    }
+    return packs.get(normalized, packs['multilingual'])
+
+
 # ─── Routes ──────────────────────────────────────────────────────────
 
 @app.route('/results')
@@ -697,10 +842,15 @@ def compare(analysis_id):
     if request.method == 'POST':
         if request.form.get('action') == 'save_human_review':
             assessments = {'accurate', 'partially_accurate', 'inaccurate'}
+            allowed_languages = {'multilingual', 'tagalog', 'english', 'german', 'russian', 'arabic'}
             reviewer = request.form.get('reviewer', '').strip()
+            evaluation_language = request.form.get('evaluation_language', 'multilingual').strip().lower()
             reviews = {}
             if not reviewer:
                 flash('Enter the reviewer name or role before saving evaluations.', 'danger')
+                return redirect(request.url)
+            if evaluation_language not in allowed_languages:
+                flash('Select a valid evaluation language.', 'danger')
                 return redirect(request.url)
 
             for topic in analysis['topics']:
@@ -722,6 +872,7 @@ def compare(analysis_id):
 
             analysis['human_review'] = {
                 'reviewer': reviewer,
+                'language': evaluation_language,
                 'topics': reviews,
             }
             set_analysis(analysis_id, analysis)
@@ -786,6 +937,9 @@ def compare(analysis_id):
             'review': human_review.get('topics', {}).get(str(topic_id), {}),
         })
 
+    human_review_language = human_review.get('language', 'multilingual')
+    human_eval_text = get_human_evaluation_language_pack(human_review_language)
+
     return render_template(
         'compare.html',
         analysis_id=analysis_id,
@@ -794,6 +948,8 @@ def compare(analysis_id):
         manual_columns=analysis.get('manual_columns', []),
         human_review_topics=human_review_topics,
         human_reviewer=human_review.get('reviewer', ''),
+        human_review_language=human_review_language,
+        human_eval_text=human_eval_text,
     )
 
 
