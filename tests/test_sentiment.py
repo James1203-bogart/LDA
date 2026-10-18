@@ -46,3 +46,15 @@ def test_pretrained_management_topics_cover_time_and_class_feedback():
     )
 
     assert result['category'] == 'Academic Support and Management'
+
+
+def test_pretrained_topics_have_requested_non_overlapping_display_names():
+    from modules.pretrained_model import PretrainedFeedbackModel
+
+    topics = PretrainedFeedbackModel.build_predefined_topics()
+
+    assert [topic['display_name'] for topic in topics] == [
+        'Management of Teaching and Learning',
+        'Content Knowledge, Pedagogy, Technology',
+        'Commitment and Transparency',
+    ]

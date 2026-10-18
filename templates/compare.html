@@ -20,7 +20,11 @@
             <div class="glass-card-body">
                 {% for topic in topics %}
                 <div class="mb-3">
+                    {% if topic.display_name %}
+                    <span class="badge-topic topic-name-badge">Topic {{ topic.topic_id }}: {{ topic.display_name }}</span>
+                    {% else %}
                     <span class="badge-topic">Topic {{ topic.topic_id }}</span>
+                    {% endif %}
                     <div class="d-flex flex-wrap gap-1 mt-2">
                         {% for word, weight in topic.word_weight_pairs[:8] %}
                         <span class="topic-pill topic-pill-primary" style="font-size:.8rem">{{ word }} <small>{{ weight }}</small></span>
@@ -97,7 +101,13 @@
                 {% set topic = item.topic %}
                 {% set review = item.review %}
                 <div class="border rounded p-3 mb-3">
-                    <h5><span class="badge-topic">Topic {{ topic.topic_id }}</span></h5>
+                    <h5>
+                        {% if topic.display_name %}
+                        <span class="badge-topic topic-name-badge">Topic {{ topic.topic_id }}: {{ topic.display_name }}</span>
+                        {% else %}
+                        <span class="badge-topic">Topic {{ topic.topic_id }}</span>
+                        {% endif %}
+                    </h5>
                     <div class="d-flex flex-wrap gap-1 mt-2 mb-3">
                         {% for word, weight in topic.word_weight_pairs[:8] %}
                         <span class="topic-pill topic-pill-primary" style="font-size:.8rem">

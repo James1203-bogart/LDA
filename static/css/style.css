@@ -826,6 +826,22 @@ body {
     gap: 10px;
 }
 
+.card-header-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+}
+
+.topic-name-badge {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+    line-height: 1.35;
+}
+
 /* ─── Nav Tabs (Results page) ─────────────────────── */
 .nav-tabs {
     border-bottom: 2px solid var(--c-border);
@@ -932,6 +948,16 @@ body {
     border-radius: var(--radius-full);
     font-weight: 600;
     font-size: .76rem;
+}
+
+.model-category-badge,
+.glass-card-body #modelForm .row > div > .badge-light {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
 }
 
 .table-responsive {

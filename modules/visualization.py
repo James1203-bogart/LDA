@@ -52,7 +52,10 @@ def generate_topic_bar_chart(topics, num_words=10):
         words = topic['words'][:num_words][::-1]
         weights = topic['weights'][:num_words][::-1]
         axes[i].barh(words, weights, color=plt.cm.viridis(np.linspace(0.3, 0.9, len(words))))
-        axes[i].set_title(f"Topic {topic['topic_id']}", fontsize=13, fontweight='bold')
+        title = f"Topic {topic['topic_id']}"
+        if topic.get('display_name'):
+            title = f"{title}: {topic['display_name']}"
+        axes[i].set_title(title, fontsize=13, fontweight='bold')
         axes[i].set_xlabel('Weight')
 
     for j in range(i + 1, len(axes)):
@@ -68,7 +71,11 @@ def generate_topic_bar_chart(topics, num_words=10):
 
 def generate_distribution_pie_chart(distribution_summary):
     """Generate a pie chart of document distribution across topics."""
-    labels = [f"Topic {d['topic_id']}" for d in distribution_summary]
+    labels = [
+        f"Topic {d['topic_id']}: {d['display_name']}" if d.get('display_name')
+        else f"Topic {d['topic_id']}"
+        for d in distribution_summary
+    ]
     sizes = [d['document_count'] for d in distribution_summary]
     colors = plt.cm.viridis(np.linspace(0.2, 0.8, len(labels)))
 

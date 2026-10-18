@@ -35,7 +35,24 @@ from modules.visualization import (
     generate_per_topic_coherence_bar
 )
 from modules.sentiment import analyze_sentiments, analyze_rating_constructs
-from modules.pretrained_model import PRETRAINED_CATEGORIES
+from modules.pretrained_model import PRETRAINED_CATEGORIES, PRETRAINED_TOPIC_NAMES
+
+
+def _apply_pretrained_topic_names(analysis):
+    if not analysis.get('predefined_results'):
+        return
+
+    names_by_id = dict(enumerate(PRETRAINED_TOPIC_NAMES, start=1))
+    for topic in analysis.get('topics', []):
+        topic_name = names_by_id.get(topic.get('topic_id'))
+        if topic_name:
+            topic['display_name'] = topic_name
+
+    for item in analysis.get('distribution', []):
+        topic_name = names_by_id.get(item.get('topic_id'))
+        if topic_name:
+            item['display_name'] = topic_name
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -525,6 +542,7 @@ def results(analysis_id):
         flash('No results available. Please run the model first.', 'danger')
         return redirect(url_for('upload'))
 
+    _apply_pretrained_topic_names(analysis)
     topics = analysis.get('topics', [])
     distribution = analysis.get('distribution', [])
     evaluation = analysis.get('evaluation', {})
@@ -673,6 +691,8 @@ def compare(analysis_id):
     if not analysis or 'topics' not in analysis:
         flash('Please run the model first.', 'danger')
         return redirect(url_for('upload'))
+
+    _apply_pretrained_topic_names(analysis)
 
     if request.method == 'POST':
         if request.form.get('action') == 'save_human_review':

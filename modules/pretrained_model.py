@@ -25,6 +25,12 @@ PRETRAINED_CATEGORIES = {
     },
 }
 
+PRETRAINED_TOPIC_NAMES = (
+    'Management of Teaching and Learning',
+    'Content Knowledge, Pedagogy, Technology',
+    'Commitment and Transparency',
+)
+
 
 
 class PretrainedFeedbackModel:
@@ -93,6 +99,7 @@ class PretrainedFeedbackModel:
             topics.append({
                 'topic_id': topic_id,
                 'category': category,
+                'display_name': PRETRAINED_TOPIC_NAMES[topic_id - 1],
                 'words': words,
                 'weights': [1.0 for _ in words],
                 'word_weight_pairs': [(word, 1.0) for word in words],

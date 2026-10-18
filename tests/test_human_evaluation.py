@@ -40,6 +40,29 @@ def test_compare_displays_representative_comments(monkeypatch):
     assert 'The library needs more study spaces.' in page
 
 
+def test_compare_displays_pretrained_topic_names_for_saved_analyses(monkeypatch):
+    analysis = {
+        'predefined_results': True,
+        'topics': [
+            {'topic_id': 1, 'word_weight_pairs': []},
+            {'topic_id': 2, 'word_weight_pairs': []},
+            {'topic_id': 3, 'word_weight_pairs': []},
+        ],
+        'dominant_topics': [],
+        'filtered_raw': [],
+    }
+    monkeypatch.setattr(flask_app, 'get_analysis', lambda _: analysis)
+    flask_app.app.config['TESTING'] = True
+
+    response = flask_app.app.test_client().get('/compare/test-analysis')
+
+    assert response.status_code == 200
+    page = response.get_data(as_text=True)
+    assert 'Topic 1: Management of Teaching and Learning' in page
+    assert 'Topic 2: Content Knowledge, Pedagogy, Technology' in page
+    assert 'Topic 3: Commitment and Transparency' in page
+
+
 def test_compare_saves_human_evaluations(monkeypatch):
     analysis = sample_analysis()
     persisted = []

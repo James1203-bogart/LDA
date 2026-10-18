@@ -140,19 +140,23 @@
                 <div class="glass-card" data-aos="fade-up" data-aos-delay="{{ loop.index0 * 40 }}">
                     <div class="glass-card-header">
                         <div class="card-header-title">
+                            {% if topic.display_name %}
+                            <span class="badge-topic topic-name-badge">Topic {{ topic.topic_id }}: {{ topic.display_name }}</span>
+                            {% else %}
                             <span class="badge-topic">Topic {{ topic.topic_id }}</span>
+                            {% endif %}
                             {% if evaluation.per_topic_coherence %}
                             <small class="card-header-meta">Coh: {{ evaluation.per_topic_coherence[topic.topic_id] }}</small>
                             {% endif %}
                         </div>
                         {% for d in distribution %}
-                            {% if per_topic_sentiment and topic.topic_id in per_topic_sentiment %}
-                            <small class="card-header-meta">Sent: {{ '%+.2f'|format(per_topic_sentiment[topic.topic_id]) }}</small>
-                            {% endif %}
                             {% if d.topic_id == topic.topic_id %}
                             <span class="badge-light">{{ d.document_count }} docs &middot; {{ d.percentage }}%</span>
                             {% endif %}
                         {% endfor %}
+                        {% if per_topic_sentiment and topic.topic_id in per_topic_sentiment %}
+                        <small class="card-header-meta">Sent: {{ '%+.2f'|format(per_topic_sentiment[topic.topic_id]) }}</small>
+                        {% endif %}
                     </div>
                     <div class="glass-card-body">
                         <div class="topic-pill-grid">
@@ -295,7 +299,13 @@
                             {% set tsd = topic_sentiment_docs.get(topic.topic_id, {}) %}
                             {% set tsc = topic_sentiment_counts.get(topic.topic_id, {}) %}
                             <tr>
-                                <td><span class="badge-topic">Topic {{ topic.topic_id }}</span></td>
+                                <td>
+                                    {% if topic.display_name %}
+                                    <span class="badge-topic topic-name-badge">Topic {{ topic.topic_id }}: {{ topic.display_name }}</span>
+                                    {% else %}
+                                    <span class="badge-topic">Topic {{ topic.topic_id }}</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     {% if per_topic_sentiment and topic.topic_id in per_topic_sentiment and per_topic_sentiment[topic.topic_id] is not none %}
                                     {{ '%+.2f'|format(per_topic_sentiment[topic.topic_id]) }}
@@ -446,7 +456,7 @@
                             <tr>
                                 <th style="width:56px">#</th>
                                 <th>Feedback Text</th>
-                                <th style="width:100px">Topic</th>
+                                <th>Topic</th>
                                 <th style="width:100px">Probability</th>
                                 <th style="width:110px">Sentiment</th>
                             </tr>
@@ -456,7 +466,14 @@
                             <tr>
                                 <td style="color:var(--c-text-muted)">{{ doc.index + 1 }}</td>
                                 <td><small>{{ doc.text }}</small></td>
-                                <td><span class="badge-topic">Topic {{ doc.topic }}</span></td>
+                                <td>
+                                    {% set doc_topic = topics|selectattr('topic_id', 'equalto', doc.topic)|first %}
+                                    {% if doc_topic.display_name %}
+                                    <span class="badge-topic topic-name-badge">Topic {{ doc.topic }}: {{ doc_topic.display_name }}</span>
+                                    {% else %}
+                                    <span class="badge-topic">Topic {{ doc.topic }}</span>
+                                    {% endif %}
+                                </td>
                                 <td><span class="badge-light">{{ doc.probability }}</span></td>
                                 <td>
                                     {% if doc.sentiment is not none %}
