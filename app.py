@@ -39,17 +39,24 @@ from modules.pretrained_model import PRETRAINED_TOPIC_NAMES, PretrainedFeedbackM
 
 
 def _apply_pretrained_topic_names(analysis):
-    if not analysis.get('predefined_results'):
-        return
-
-    names_by_id = dict(enumerate(PRETRAINED_TOPIC_NAMES, start=1))
+    names_by_id = (
+        dict(enumerate(PRETRAINED_TOPIC_NAMES, start=1))
+        if analysis.get('predefined_results') else {}
+    )
+    topic_names = {}
     for topic in analysis.get('topics', []):
-        topic_name = names_by_id.get(topic.get('topic_id'))
-        if topic_name:
-            topic['display_name'] = topic_name
+        topic_id = topic.get('topic_id')
+        topic_name = names_by_id.get(topic_id) or topic.get('display_name')
+        if not topic_name:
+            top_words = topic.get('words') or [
+                word for word, _ in topic.get('word_weight_pairs', [])
+            ]
+            topic_name = ', '.join(top_words[:3]) or f'Topic {topic_id}'
+        topic['display_name'] = topic_name
+        topic_names[topic_id] = topic_name
 
     for item in analysis.get('distribution', []):
-        topic_name = names_by_id.get(item.get('topic_id'))
+        topic_name = topic_names.get(item.get('topic_id'))
         if topic_name:
             item['display_name'] = topic_name
 

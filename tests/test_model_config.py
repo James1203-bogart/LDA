@@ -90,6 +90,7 @@ class ModelConfigRouteTests(unittest.TestCase):
         self.assertIn('apple', results_page)
         self.assertIn('Feedback Categories', results_page)
         self.assertIn('Category / Subtopic', results_page)
+        self.assertIn('Topic 0:', results_page)
 
     def test_model_config_reuses_results_for_same_file_and_settings(self):
         dataframe = pd.DataFrame({

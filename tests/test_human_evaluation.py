@@ -40,6 +40,19 @@ def test_compare_displays_representative_comments(monkeypatch):
     assert 'The library needs more study spaces.' in page
 
 
+def test_compare_displays_keyword_names_for_lda_topics(monkeypatch):
+    analysis = sample_analysis()
+    monkeypatch.setattr(flask_app, 'get_analysis', lambda _: analysis)
+    flask_app.app.config['TESTING'] = True
+
+    response = flask_app.app.test_client().get('/compare/test-analysis')
+
+    assert response.status_code == 200
+    page = response.get_data(as_text=True)
+    assert 'Topic 0: teaching, feedback' in page
+    assert 'Topic 1: facilities, library' in page
+
+
 def test_compare_displays_pretrained_topic_names_for_saved_analyses(monkeypatch):
     analysis = {
         'predefined_results': True,
