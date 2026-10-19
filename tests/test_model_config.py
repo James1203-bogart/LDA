@@ -1,22 +1,29 @@
-import os
-import shutil
+import tempfile
 import unittest
 
-from app import app, analysis_store, set_analysis, get_analysis, ANALYSIS_STORE_DIR
+import pandas as pd
+
+import app as flask_app
+
+app = flask_app.app
+analysis_store = flask_app.analysis_store
+set_analysis = flask_app.set_analysis
+get_analysis = flask_app.get_analysis
 
 
 class ModelConfigRouteTests(unittest.TestCase):
     def setUp(self):
         app.config['TESTING'] = True
         self.client = app.test_client()
+        self.original_store_dir = flask_app.ANALYSIS_STORE_DIR
+        self.temp_store = tempfile.TemporaryDirectory()
+        flask_app.ANALYSIS_STORE_DIR = self.temp_store.name
         analysis_store.clear()
-        if os.path.exists(ANALYSIS_STORE_DIR):
-            shutil.rmtree(ANALYSIS_STORE_DIR)
 
     def tearDown(self):
         analysis_store.clear()
-        if os.path.exists(ANALYSIS_STORE_DIR):
-            shutil.rmtree(ANALYSIS_STORE_DIR)
+        flask_app.ANALYSIS_STORE_DIR = self.original_store_dir
+        self.temp_store.cleanup()
 
     def test_model_config_renders_when_preprocessing_stats_are_missing(self):
         analysis_store['abc123'] = {
@@ -39,6 +46,101 @@ class ModelConfigRouteTests(unittest.TestCase):
 
         self.assertIsNotNone(reloaded)
         self.assertEqual(reloaded['text_count'], 1)
+
+    def test_model_config_generates_topics_from_uploaded_feedback(self):
+        fruit_docs = [
+            ['apple', 'orange', 'banana', 'fruit', 'sweet'],
+            ['apple', 'banana', 'fruit', 'fresh', 'sweet'],
+            ['orange', 'banana', 'fruit', 'fresh', 'ripe'],
+            ['apple', 'orange', 'fruit', 'ripe', 'sweet'],
+        ]
+        analysis_store['fruit-analysis'] = {
+            'processed_texts': fruit_docs,
+            'filtered_raw': [' '.join(doc) for doc in fruit_docs],
+            'sentiments': [],
+            'preprocessing_stats': {},
+        }
+
+        response = self.client.post(
+            '/model-config/fruit-analysis',
+            data={'num_topics': '2'},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        analysis = get_analysis('fruit-analysis')
+        topic_words = {
+            word
+            for topic in analysis['topics']
+            for word in topic['words']
+        }
+        self.assertEqual(analysis['num_topics'], 2)
+        self.assertTrue(topic_words)
+        self.assertTrue(topic_words.issubset({word for doc in fruit_docs for word in doc}))
+        self.assertNotIn('classroom', topic_words)
+        self.assertNotIn('curriculum', topic_words)
+
+        results_response = self.client.get('/results/fruit-analysis')
+        self.assertEqual(results_response.status_code, 200)
+        results_page = results_response.get_data(as_text=True)
+        self.assertIn('apple', results_page)
+        self.assertNotIn('Pre-trained Categories', results_page)
+
+    def test_model_config_reuses_results_for_same_file_and_settings(self):
+        dataframe = pd.DataFrame({
+            'feedback': ['clear explanations', 'helpful teaching'],
+        })
+        fingerprint = flask_app.dataframe_fingerprint(dataframe)
+        set_analysis('existing-results', {
+            'filename': 'feedback.csv',
+            'dataframe': dataframe,
+            'dataset_fingerprint': fingerprint,
+            'feedback_column': 'feedback',
+            'extra_stopwords': [],
+            'num_topics': 2,
+            'topics': [{'topic_id': 0, 'words': ['teaching']}],
+            'distribution': [{'topic_id': 0, 'document_count': 2}],
+        })
+        analysis_store['new-upload'] = {
+            'filename': 'feedback.csv',
+            'dataframe': dataframe.copy(),
+            'dataset_fingerprint': fingerprint,
+            'feedback_column': 'feedback',
+            'extra_stopwords': [],
+            'processed_texts': [['clear', 'explanations'], ['helpful', 'teaching']],
+            'preprocessing_stats': {},
+        }
+
+        response = self.client.post(
+            '/model-config/new-upload',
+            data={'num_topics': '2'},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], '/results/existing-results')
+        self.assertIsNone(get_analysis('new-upload'))
+
+    def test_same_filename_with_changed_file_contents_is_not_reused(self):
+        previous = pd.DataFrame({'feedback': ['clear explanations']})
+        current = pd.DataFrame({'feedback': ['poor explanations']})
+        set_analysis('existing-results', {
+            'filename': 'feedback.csv',
+            'dataframe': previous,
+            'feedback_column': 'feedback',
+            'extra_stopwords': [],
+            'num_topics': 2,
+            'topics': [{'topic_id': 0, 'words': ['teaching']}],
+            'distribution': [{'topic_id': 0, 'document_count': 1}],
+        })
+        current_analysis = {
+            'filename': 'feedback.csv',
+            'dataframe': current,
+            'feedback_column': 'feedback',
+            'extra_stopwords': [],
+        }
+
+        self.assertIsNone(
+            flask_app.find_matching_completed_analysis(current_analysis, num_topics=2)
+        )
 
 
 if __name__ == '__main__':

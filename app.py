@@ -7,6 +7,7 @@ Using Latent Dirichlet Allocation (LDA)
 import os
 import io
 import json
+import hashlib
 import logging
 import re
 import uuid
@@ -27,7 +28,6 @@ from config import (
 )
 from modules.preprocessing import TextPreprocessor
 from modules.topic_modeling import LDATopicModeler
-from modules.pretrained_model import PretrainedFeedbackModel
 from modules.evaluation import ModelEvaluator
 from modules.visualization import (
     generate_topic_bar_chart,
@@ -35,7 +35,7 @@ from modules.visualization import (
     generate_per_topic_coherence_bar
 )
 from modules.sentiment import analyze_sentiments, analyze_rating_constructs
-from modules.pretrained_model import PRETRAINED_CATEGORIES, PRETRAINED_TOPIC_NAMES
+from modules.pretrained_model import PRETRAINED_TOPIC_NAMES
 
 
 def _apply_pretrained_topic_names(analysis):
@@ -125,6 +125,17 @@ def set_analysis(analysis_id, analysis_data):
         logger.warning('Failed to persist analysis %s: %s', analysis_id, e)
 
 
+def discard_analysis(analysis_id):
+    """Remove a newly uploaded analysis when an existing result is reused."""
+    analysis_store.pop(analysis_id, None)
+    try:
+        os.remove(_analysis_path(analysis_id))
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        logger.warning('Failed to remove duplicate analysis %s: %s', analysis_id, e)
+
+
 def get_completed_analyses():
     analysis_ids = set(analysis_store)
     try:
@@ -161,6 +172,46 @@ def get_completed_analyses():
 
 def get_dataframe_from_analysis(analysis):
     return analysis.get('dataframe')
+
+
+def dataframe_fingerprint(dataframe):
+    """Return a stable fingerprint for the contents and schema of an uploaded dataset."""
+    digest = hashlib.sha256()
+    digest.update(repr(list(dataframe.columns)).encode('utf-8'))
+    digest.update(repr([str(dtype) for dtype in dataframe.dtypes]).encode('utf-8'))
+    digest.update(str(dataframe.shape).encode('ascii'))
+    digest.update(pd.util.hash_pandas_object(dataframe, index=True).values.tobytes())
+    return digest.hexdigest()
+
+
+def find_matching_completed_analysis(analysis, num_topics):
+    """Find a prior result for the same file and analysis settings."""
+    dataframe = get_dataframe_from_analysis(analysis)
+    if dataframe is None:
+        return None
+
+    fingerprint = analysis.get('dataset_fingerprint') or dataframe_fingerprint(dataframe)
+    stopwords = frozenset(analysis.get('extra_stopwords', []))
+
+    for completed in get_completed_analyses():
+        candidate = get_analysis(completed['analysis_id'])
+        if not candidate or candidate.get('filename') != analysis.get('filename'):
+            continue
+        if candidate.get('feedback_column') != analysis.get('feedback_column'):
+            continue
+        if candidate.get('num_topics') != num_topics:
+            continue
+        if frozenset(candidate.get('extra_stopwords', [])) != stopwords:
+            continue
+
+        candidate_fingerprint = candidate.get('dataset_fingerprint')
+        candidate_dataframe = get_dataframe_from_analysis(candidate)
+        if not candidate_fingerprint and candidate_dataframe is not None:
+            candidate_fingerprint = dataframe_fingerprint(candidate_dataframe)
+        if candidate_fingerprint == fingerprint:
+            return completed['analysis_id']
+
+    return None
 
 
 def extract_google_sheet_id(url):
@@ -425,6 +476,7 @@ def upload():
             'dataframe': df,
             'columns': list(df.columns),
             'row_count': len(df),
+            'dataset_fingerprint': dataframe_fingerprint(df),
         }
         set_analysis(analysis_id, analysis_data)
 
@@ -570,92 +622,85 @@ def preprocess(analysis_id):
 
 @app.route('/model-config/<analysis_id>', methods=['GET', 'POST'])
 def model_config(analysis_id):
-    """Apply the bundled classifier and generate supporting topic details."""
+    """Train a topic model using the uploaded feedback."""
     analysis = get_analysis(analysis_id)
     if not analysis or 'processed_texts' not in analysis:
         flash('Please complete preprocessing first.', 'danger')
         return redirect(url_for('upload'))
 
+    processed_texts = analysis['processed_texts']
+    max_topics = min(MAX_TOPICS, len(processed_texts))
+    min_topics = min(MIN_TOPICS, max_topics)
+
     if request.method == 'POST':
         try:
-            classifier = PretrainedFeedbackModel()
-            analysis['pretrained_predictions'] = classifier.classify_documents(
-                analysis.get('filtered_raw', analysis.get('raw_texts', []))
+            num_topics = int(request.form.get('num_topics', DEFAULT_NUM_TOPICS))
+            if not min_topics <= num_topics <= max_topics:
+                raise ValueError(
+                    f'Choose between {min_topics} and {max_topics} topics for this dataset.'
+                )
+
+            matching_analysis_id = find_matching_completed_analysis(analysis, num_topics)
+            if matching_analysis_id:
+                discard_analysis(analysis_id)
+                flash('Existing results found for this same file. Showing the saved results.', 'success')
+                return redirect(url_for('results', analysis_id=matching_analysis_id))
+
+            modeler = LDATopicModeler()
+            modeler.build_corpus(processed_texts, min_df=1, max_df=1.0)
+            analysis['topics'] = modeler.train_model(num_topics=num_topics)
+            analysis['num_topics'] = num_topics
+            analysis['dominant_topics'] = modeler.get_dominant_topics()
+
+            from collections import Counter, defaultdict
+            topic_counts = Counter(
+                item['dominant_topic'] for item in analysis['dominant_topics']
             )
-            analysis['category_summary'] = classifier.summarize(analysis['pretrained_predictions'])
-
-            predefined_topics = classifier.build_predefined_topics()
-            analysis['topics'] = predefined_topics
-            analysis['num_topics'] = len(predefined_topics)
-
-            category_order = list(PRETRAINED_CATEGORIES.keys())
-            category_counts = {category: 0 for category in category_order}
-            for prediction in analysis['pretrained_predictions']:
-                category = prediction.get('category')
-                if category in category_counts:
-                    category_counts[category] += 1
-
             analysis['distribution'] = [
                 {
-                    'topic_id': idx,
-                    'document_count': category_counts.get(category, 0),
+                    'topic_id': topic_id,
+                    'document_count': topic_counts.get(topic_id, 0),
                     'percentage': round(
-                        category_counts.get(category, 0) / max(len(analysis['pretrained_predictions']), 1) * 100,
+                        topic_counts.get(topic_id, 0) / max(len(processed_texts), 1) * 100,
                         2,
                     ),
                 }
-                for idx, category in enumerate(category_order, start=1)
+                for topic_id in range(num_topics)
             ]
-            analysis['dominant_topics'] = [
-                {
-                    'document_index': idx,
-                    'dominant_topic': category_order.index(pred['category']) + 1,
-                    'probability': pred['confidence'],
-                    'topic': category_order.index(pred['category']) + 1,
-                }
-                for idx, pred in enumerate(analysis['pretrained_predictions'])
-            ]
-            analysis['predefined_results'] = True
-            analysis['evaluation'] = {
-                'coherence_c_v': 'N/A',
-                'coherence_u_mass': 'N/A',
-                'perplexity': 'N/A',
-                'interpretation': [
-                    'This feedback model uses a predefined student-feedback taxonomy instead of a data-driven LDA model.',
-                    'The system groups responses into 3 main categories and their subtopics for management review. '
-                    'Rating-based sentiment is computed separately from the numeric feedback items.'
-                ],
+
+            evaluator = ModelEvaluator(
+                modeler.model,
+                modeler.dtm,
+                modeler.feature_names,
+                processed_texts,
+            )
+            analysis['evaluation'] = evaluator.full_evaluation()
+
+            topic_sentiments = defaultdict(list)
+            for item in analysis['dominant_topics']:
+                index = item['document_index']
+                if index < len(analysis.get('sentiments', [])):
+                    score = analysis['sentiments'][index]
+                    if score is not None:
+                        topic_sentiments[item['dominant_topic']].append(
+                            score.get('compound', 0.0)
+                        )
+            analysis['per_topic_sentiment'] = {
+                topic_id: round(sum(scores) / len(scores), 4)
+                for topic_id, scores in topic_sentiments.items()
             }
-
-            try:
-                if analysis.get('sentiments'):
-                    from collections import defaultdict
-                    topic_sents = defaultdict(list)
-                    for idx, pred in enumerate(analysis['pretrained_predictions']):
-                        if idx >= len(analysis['sentiments']):
-                            continue
-                        score = analysis['sentiments'][idx]
-                        if score is None:
-                            continue
-                        category_idx = category_order.index(pred['category']) + 1
-                        topic_sents[category_idx].append(score.get('compound', 0.0))
-                    analysis['per_topic_sentiment'] = {
-                        topic_id: round(sum(values) / len(values), 4) if values else None
-                        for topic_id, values in topic_sents.items()
-                    }
-            except Exception as e:
-                logger.warning('Failed to compute per-topic sentiment: %s', e)
-
+            analysis.pop('predefined_results', None)
+            analysis.pop('category_summary', None)
+            analysis.pop('pretrained_predictions', None)
             set_analysis(analysis_id, analysis)
-            flash('Pre-defined student feedback taxonomy applied with 3 categories and subtopics.', 'success')
+            flash(f'Topic model trained on your feedback with {num_topics} topics.', 'success')
             return redirect(url_for('results', analysis_id=analysis_id))
 
         except ValueError as e:
-            logger.error('Invalid input in model config: %s', e)
-            flash(f'Invalid input: {str(e)}', 'danger')
+            flash(f'Invalid model configuration: {str(e)}', 'danger')
             return redirect(request.url)
         except Exception as e:
-            logger.error('Error training LDA model: %s', e)
+            logger.exception('Error training LDA model: %s', e)
             flash(f'Error training model: {str(e)}. Please try again with different settings.', 'danger')
             return redirect(request.url)
 
@@ -673,9 +718,9 @@ def model_config(analysis_id):
         analysis_id=analysis_id,
         stats=stats,
         preview=analysis.get('preprocess_preview', []),
-        default_topics=3,
-        min_topics=3,
-        max_topics=3,
+        default_topics=min(DEFAULT_NUM_TOPICS, max_topics),
+        min_topics=min_topics,
+        max_topics=max_topics,
     )
 
 
@@ -731,6 +776,9 @@ def results(analysis_id):
         idx = d.get('document_index')
         if idx is None:
             idx = d.get('index')
+        topic_id = d.get('dominant_topic')
+        if topic_id is None:
+            topic_id = d.get('topic')
         sentiment_val = None
         try:
             if idx is not None and idx < len(sentiments) and sentiments[idx]:
@@ -746,7 +794,7 @@ def results(analysis_id):
         doc_topic_preview.append({
             'index': idx,
             'text': preview_text,
-            'topic': d.get('dominant_topic') or d.get('topic'),
+            'topic': topic_id,
             'probability': d.get('probability'),
             'sentiment': sentiment_val,
         })
