@@ -74,6 +74,11 @@ class ModelConfigRouteTests(unittest.TestCase):
             for word in topic['words']
         }
         self.assertEqual(analysis['num_topics'], 2)
+        self.assertEqual(len(analysis['pretrained_predictions']), len(fruit_docs))
+        self.assertEqual(
+            sum(category['document_count'] for category in analysis['category_summary']),
+            len(fruit_docs),
+        )
         self.assertTrue(topic_words)
         self.assertTrue(topic_words.issubset({word for doc in fruit_docs for word in doc}))
         self.assertNotIn('classroom', topic_words)
@@ -83,7 +88,8 @@ class ModelConfigRouteTests(unittest.TestCase):
         self.assertEqual(results_response.status_code, 200)
         results_page = results_response.get_data(as_text=True)
         self.assertIn('apple', results_page)
-        self.assertNotIn('Pre-trained Categories', results_page)
+        self.assertIn('Feedback Categories', results_page)
+        self.assertIn('Category / Subtopic', results_page)
 
     def test_model_config_reuses_results_for_same_file_and_settings(self):
         dataframe = pd.DataFrame({

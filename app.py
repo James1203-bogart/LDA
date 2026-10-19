@@ -35,7 +35,7 @@ from modules.visualization import (
     generate_per_topic_coherence_bar
 )
 from modules.sentiment import analyze_sentiments, analyze_rating_constructs
-from modules.pretrained_model import PRETRAINED_TOPIC_NAMES
+from modules.pretrained_model import PRETRAINED_TOPIC_NAMES, PretrainedFeedbackModel
 
 
 def _apply_pretrained_topic_names(analysis):
@@ -52,6 +52,17 @@ def _apply_pretrained_topic_names(analysis):
         topic_name = names_by_id.get(item.get('topic_id'))
         if topic_name:
             item['display_name'] = topic_name
+
+
+def _apply_pretrained_categories(analysis):
+    if 'category_summary' in analysis and 'pretrained_predictions' in analysis:
+        return False
+
+    classifier = PretrainedFeedbackModel()
+    predictions = classifier.classify_documents(analysis.get('filtered_raw', []))
+    analysis['pretrained_predictions'] = predictions
+    analysis['category_summary'] = classifier.summarize(predictions)
+    return True
 
 
 # Configure logging
@@ -651,6 +662,13 @@ def model_config(analysis_id):
             analysis['topics'] = modeler.train_model(num_topics=num_topics)
             analysis['num_topics'] = num_topics
             analysis['dominant_topics'] = modeler.get_dominant_topics()
+            classifier = PretrainedFeedbackModel()
+            analysis['pretrained_predictions'] = classifier.classify_documents(
+                analysis.get('filtered_raw', [])
+            )
+            analysis['category_summary'] = classifier.summarize(
+                analysis['pretrained_predictions']
+            )
 
             from collections import Counter, defaultdict
             topic_counts = Counter(
@@ -732,6 +750,8 @@ def results(analysis_id):
         flash('No results available. Please run the model first.', 'danger')
         return redirect(url_for('upload'))
 
+    if _apply_pretrained_categories(analysis):
+        set_analysis(analysis_id, analysis)
     _apply_pretrained_topic_names(analysis)
     topics = analysis.get('topics', [])
     distribution = analysis.get('distribution', [])
@@ -771,6 +791,7 @@ def results(analysis_id):
 
     # Document-topic table for preview
     dominant = analysis.get('dominant_topics', [])
+    pretrained_predictions = analysis.get('pretrained_predictions', [])
     doc_topic_preview = []
     for d in dominant[:20]:
         idx = d.get('document_index')
@@ -797,6 +818,10 @@ def results(analysis_id):
             'topic': topic_id,
             'probability': d.get('probability'),
             'sentiment': sentiment_val,
+            'category': pretrained_predictions[idx].get('category')
+            if isinstance(idx, int) and 0 <= idx < len(pretrained_predictions) else None,
+            'subtopic': pretrained_predictions[idx].get('subtopic')
+            if isinstance(idx, int) and 0 <= idx < len(pretrained_predictions) else None,
         })
 
     per_topic_sentiment = analysis.get('per_topic_sentiment', {})

@@ -79,18 +79,23 @@
 {% if category_summary %}
 <div class="glass-card mb-4" data-aos="fade-up" data-aos-delay="110">
     <div class="glass-card-header">
-        <h3 class="glass-card-title"><i class="bi bi-diagram-3-fill"></i> Pre-trained Categories</h3>
+        <h3 class="glass-card-title"><i class="bi bi-diagram-3-fill"></i> Feedback Categories</h3>
         <span class="badge-light">3 categories &middot; 9 subtopics</span>
     </div>
     <div class="glass-card-body">
-        <div class="row g-3">
+        <p class="text-secondary mb-3">Each feedback response is assigned to its closest matching category and subtopic.</p>
+        <div class="row g-4 category-summary-grid">
             {% for category in category_summary %}
-            <div class="col-md-4">
-                <h6>{{ category.category }} <span class="badge-light">{{ category.document_count }}</span></h6>
-                <ul class="list-unstyled mb-0">
+            <div class="col-md-4 category-summary-column">
+                <div class="category-summary-heading">
+                    <h6>{{ category.category }}</h6>
+                    <span class="badge-light">{{ category.document_count }}</span>
+                </div>
+                <ul class="list-unstyled mb-0 category-summary-list">
                     {% for subtopic in category.subtopics %}
-                    <li class="d-flex justify-content-between py-1" style="color:var(--c-text-secondary);font-size:.9rem">
-                        <span>{{ subtopic.name }}</span><span>{{ subtopic.document_count }}</span>
+                    <li>
+                        <span>{{ subtopic.name }}</span>
+                        <span class="category-summary-count">{{ subtopic.document_count }}</span>
                     </li>
                     {% endfor %}
                 </ul>
@@ -458,6 +463,7 @@
                                 <th style="width:56px">#</th>
                                 <th>Feedback Text</th>
                                 <th>Topic</th>
+                                <th>Category / Subtopic</th>
                                 <th style="width:100px">Probability</th>
                                 <th style="width:110px">Sentiment</th>
                             </tr>
@@ -473,6 +479,14 @@
                                     <span class="badge-topic topic-name-badge">Topic {{ doc.topic }}: {{ doc_topic.display_name }}</span>
                                     {% else %}
                                     <span class="badge-topic">Topic {{ doc.topic }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if doc.category %}
+                                    <strong>{{ doc.category }}</strong><br>
+                                    <small class="text-secondary">{{ doc.subtopic }}</small>
+                                    {% else %}
+                                    <span class="badge-light">N/A</span>
                                     {% endif %}
                                 </td>
                                 <td><span class="badge-light">{{ doc.probability }}</span></td>
