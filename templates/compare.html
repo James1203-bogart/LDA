@@ -74,6 +74,56 @@
     </div>
 </div>
 
+<section class="mt-4" aria-labelledby="model-comparison-title">
+    <div class="glass-card">
+        <div class="glass-card-header">
+            <h3 class="glass-card-title" id="model-comparison-title">
+                <i class="bi bi-bar-chart-line-fill"></i> LDA Model Comparison
+            </h3>
+        </div>
+        <div class="glass-card-body">
+            <p style="color:var(--c-text-secondary);font-size:.9rem">
+                This reproducible baseline uses the same feedback, preprocessing, vocabulary, topic count,
+                random seed, and iteration count as the current model. It differs only by using batch
+                learning instead of online learning. It is a reference baseline, not a recovered historical model.
+            </p>
+            {% if model_comparison %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Current LDA (online)</th>
+                            <th>Baseline LDA (batch)</th>
+                            <th>Preferred direction</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th scope="row">NPMI coherence</th>
+                            <td>{{ model_comparison.current.coherence_c_v if model_comparison.current.coherence_c_v is defined else 'N/A' }}</td>
+                            <td>{{ model_comparison.baseline.coherence_c_v if model_comparison.baseline.coherence_c_v is defined else 'N/A' }}</td>
+                            <td>Higher</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Perplexity</th>
+                            <td>{{ model_comparison.current.perplexity if model_comparison.current.perplexity is defined else 'N/A' }}</td>
+                            <td>{{ model_comparison.baseline.perplexity if model_comparison.baseline.perplexity is defined else 'N/A' }}</td>
+                            <td>Lower</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="mb-0">A baseline comparison is unavailable because the saved analysis does not contain the processed feedback used to train the current model.</p>
+            {% endif %}
+            <small class="d-block mt-3" style="color:var(--c-text-muted)">
+                Coherence and perplexity are not accuracy, precision, recall, or F1. Those require human-verified labels.
+            </small>
+        </div>
+    </div>
+</section>
+
 <section class="mt-4" aria-labelledby="human-evaluation-title">
     <div class="glass-card">
         <div class="glass-card-header">

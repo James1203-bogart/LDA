@@ -714,6 +714,7 @@ def model_config(analysis_id):
                 topic_id: round(sum(scores) / len(scores), 4)
                 for topic_id, scores in topic_sentiments.items()
             }
+            analysis.pop('baseline_evaluation', None)
             analysis.pop('predefined_results', None)
             analysis.pop('category_summary', None)
             analysis.pop('pretrained_predictions', None)
@@ -1020,6 +1021,32 @@ def compare(analysis_id):
     human_review_language = human_review.get('language', 'multilingual')
     human_eval_text = get_human_evaluation_language_pack(human_review_language)
 
+    model_comparison = None
+    if analysis.get('processed_texts') and analysis.get('num_topics'):
+        baseline_evaluation = analysis.get('baseline_evaluation')
+        if baseline_evaluation is None:
+            baseline_modeler = LDATopicModeler()
+            baseline_modeler.build_corpus(
+                analysis['processed_texts'], min_df=1, max_df=1.0
+            )
+            baseline_modeler.train_model(
+                num_topics=analysis['num_topics'],
+                learning_method='batch',
+            )
+            baseline_evaluation = ModelEvaluator(
+                baseline_modeler.model,
+                baseline_modeler.dtm,
+                baseline_modeler.feature_names,
+                analysis['processed_texts'],
+            ).full_evaluation()
+            analysis['baseline_evaluation'] = baseline_evaluation
+            set_analysis(analysis_id, analysis)
+
+        model_comparison = {
+            'current': analysis.get('evaluation', {}),
+            'baseline': baseline_evaluation,
+        }
+
     return render_template(
         'compare.html',
         analysis_id=analysis_id,
@@ -1030,6 +1057,7 @@ def compare(analysis_id):
         human_reviewer=human_review.get('reviewer', ''),
         human_review_language=human_review_language,
         human_eval_text=human_eval_text,
+        model_comparison=model_comparison,
     )
 
 

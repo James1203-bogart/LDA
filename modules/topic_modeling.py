@@ -104,10 +104,12 @@ class LDATopicModeler:
             'total_word_occurrences': int(self.dtm.sum()),
         }
 
-    def train_model(self, num_topics=None, passes=None, iterations=None):
+    def train_model(self, num_topics=None, passes=None, iterations=None, learning_method='online'):
         """Train the LDA model."""
         if self.dtm is None:
             raise ValueError("Corpus not built. Call build_corpus() first.")
+        if learning_method not in {'batch', 'online'}:
+            raise ValueError("learning_method must be 'batch' or 'online'.")
 
         self.num_topics = num_topics or DEFAULT_NUM_TOPICS
         max_iter = iterations or LDA_ITERATIONS
@@ -116,7 +118,7 @@ class LDATopicModeler:
             n_components=self.num_topics,
             random_state=RANDOM_STATE,
             max_iter=max_iter,
-            learning_method='online',
+            learning_method=learning_method,
             n_jobs=-1,
         )
         self.model.fit(self.dtm)

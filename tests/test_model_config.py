@@ -59,6 +59,7 @@ class ModelConfigRouteTests(unittest.TestCase):
             'filtered_raw': [' '.join(doc) for doc in fruit_docs],
             'sentiments': [],
             'preprocessing_stats': {},
+            'baseline_evaluation': {'coherence_c_v': 1.0, 'perplexity': 0.0},
         }
 
         response = self.client.post(
@@ -74,6 +75,7 @@ class ModelConfigRouteTests(unittest.TestCase):
             for word in topic['words']
         }
         self.assertEqual(analysis['num_topics'], 2)
+        self.assertNotIn('baseline_evaluation', analysis)
         self.assertEqual(len(analysis['pretrained_predictions']), len(fruit_docs))
         self.assertEqual(
             sum(category['document_count'] for category in analysis['category_summary']),

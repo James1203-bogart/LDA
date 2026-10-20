@@ -53,6 +53,57 @@ def test_compare_displays_keyword_names_for_lda_topics(monkeypatch):
     assert 'Topic 1: facilities, library' in page
 
 
+def test_compare_shows_and_caches_reproducible_batch_baseline(monkeypatch):
+    analysis = sample_analysis()
+    analysis.update({
+        'processed_texts': [['instructor', 'clear'], ['library', 'space']],
+        'num_topics': 2,
+        'evaluation': {'coherence_c_v': 0.12, 'perplexity': 45.0},
+    })
+    model_runs = []
+
+    class FakeModeler:
+        def build_corpus(self, texts, min_df, max_df):
+            assert texts == analysis['processed_texts']
+
+        def train_model(self, num_topics, learning_method):
+            model_runs.append((num_topics, learning_method))
+            self.model = object()
+            self.dtm = object()
+            self.feature_names = ['clear', 'space']
+
+    class FakeEvaluator:
+        def __init__(self, model, dtm, feature_names, texts):
+            assert texts == analysis['processed_texts']
+
+        def full_evaluation(self):
+            return {'coherence_c_v': 0.08, 'perplexity': 52.0}
+
+    persisted = []
+    monkeypatch.setattr(flask_app, 'get_analysis', lambda _: analysis)
+    monkeypatch.setattr(flask_app, 'set_analysis', lambda key, value: persisted.append(key))
+    monkeypatch.setattr(flask_app, 'LDATopicModeler', FakeModeler)
+    monkeypatch.setattr(flask_app, 'ModelEvaluator', FakeEvaluator)
+    flask_app.app.config['TESTING'] = True
+    client = flask_app.app.test_client()
+
+    response = client.get('/compare/test-analysis')
+
+    assert response.status_code == 200
+    page = response.get_data(as_text=True)
+    assert 'Baseline LDA (batch)' in page
+    assert 'reference baseline, not a recovered historical model' in page
+    assert '0.12' in page
+    assert '0.08' in page
+    assert model_runs == [(2, 'batch')]
+    assert analysis['baseline_evaluation']['perplexity'] == 52.0
+    assert persisted == ['test-analysis']
+
+    second_response = client.get('/compare/test-analysis')
+    assert second_response.status_code == 200
+    assert model_runs == [(2, 'batch')]
+
+
 def test_compare_displays_pretrained_topic_names_for_saved_analyses(monkeypatch):
     analysis = {
         'predefined_results': True,
