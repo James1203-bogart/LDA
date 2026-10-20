@@ -38,6 +38,10 @@ def test_compare_displays_representative_comments(monkeypatch):
     assert 'Human Evaluation of Topics' in page
     assert 'Teaching feedback is helpful.' in page
     assert 'The library needs more study spaces.' in page
+    assert 'No BERT model was run.' in page
+    assert 'BERT (simulated demo)' in page
+    assert '0.35 (fictional)' in page
+    assert page.index('Manual Coding') < page.index('Model Comparison')
 
 
 def test_compare_displays_keyword_names_for_lda_topics(monkeypatch):
