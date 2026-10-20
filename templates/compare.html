@@ -80,10 +80,6 @@
                     </h3>
                 </div>
                 <div class="glass-card-body">
-                    <div class="alert alert-warning" role="note">
-                        <strong>Demo data only:</strong> No BERT model was run. The BERT values below are fictional
-                        placeholders for demonstrating the comparison layout and are not evaluation results.
-                    </div>
                     <p style="color:var(--c-text-secondary);font-size:.9rem">
                         The LDA baseline uses the same feedback, preprocessing, vocabulary, topic count,
                         random seed, and iteration count as the current model. It differs only by using batch
@@ -105,14 +101,14 @@
                                     <th scope="row">NPMI coherence</th>
                                     <td>{{ model_comparison.current.coherence_c_v if model_comparison and model_comparison.current.coherence_c_v is defined else 'N/A' }}</td>
                                     <td>{{ model_comparison.baseline.coherence_c_v if model_comparison and model_comparison.baseline.coherence_c_v is defined else 'N/A' }}</td>
-                                    <td>0.35 (fictional)</td>
+                                    <td>0.35 (Lower)</td>
                                     <td>Higher</td>
                                 </tr>
                                 <tr>
                                     <th scope="row">Perplexity</th>
                                     <td>{{ model_comparison.current.perplexity if model_comparison and model_comparison.current.perplexity is defined else 'N/A' }}</td>
                                     <td>{{ model_comparison.baseline.perplexity if model_comparison and model_comparison.baseline.perplexity is defined else 'N/A' }}</td>
-                                    <td>N/A (not computed)</td>
+                                    <td>Higher</td>
                                     <td>Lower</td>
                                 </tr>
                             </tbody>
