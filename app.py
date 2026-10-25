@@ -716,8 +716,6 @@ def model_config(analysis_id):
             }
             analysis.pop('baseline_evaluation', None)
             analysis.pop('predefined_results', None)
-            analysis.pop('category_summary', None)
-            analysis.pop('pretrained_predictions', None)
             set_analysis(analysis_id, analysis)
             flash(f'Topic model trained on your feedback with {num_topics} topics.', 'success')
             return redirect(url_for('results', analysis_id=analysis_id))
@@ -800,6 +798,21 @@ def results(analysis_id):
     # Document-topic table for preview
     dominant = analysis.get('dominant_topics', [])
     pretrained_predictions = analysis.get('pretrained_predictions', [])
+    category_predictions = []
+    for idx, text in enumerate(analysis.get('filtered_raw', [])):
+        prediction = (
+            pretrained_predictions[idx]
+            if idx < len(pretrained_predictions) else {}
+        )
+        display_text = str(text)
+        category_predictions.append({
+            'index': idx,
+            'text': display_text[:500] + ('...' if len(display_text) > 500 else ''),
+            'category': prediction.get('category'),
+            'subtopic': prediction.get('subtopic'),
+            'confidence': prediction.get('confidence'),
+        })
+
     doc_topic_preview = []
     for d in dominant[:20]:
         idx = d.get('document_index')
@@ -905,6 +918,7 @@ def results(analysis_id):
         rating_constructs=rating_constructs,
         category_summary=analysis.get('category_summary', []),
         pretrained_predictions=analysis.get('pretrained_predictions', []),
+        category_predictions=category_predictions,
         topic_sentiment_docs=topic_sentiment_docs,
         topic_sentiment_counts=topic_sentiment_counts,
     )

@@ -91,6 +91,15 @@ class ModelConfigRouteTests(unittest.TestCase):
         results_page = results_response.get_data(as_text=True)
         self.assertIn('apple', results_page)
         self.assertIn('Feedback Categories', results_page)
+        self.assertIn('Predicted Categories', results_page)
+        self.assertIn('Predicted Category', results_page)
+        self.assertIn('Match Score', results_page)
+        self.assertIn(analysis['pretrained_predictions'][0]['category'], results_page)
+        self.assertIn(analysis['pretrained_predictions'][0]['subtopic'], results_page)
+        self.assertIn(
+            f"{analysis['pretrained_predictions'][0]['confidence']:.4f}",
+            results_page,
+        )
         self.assertIn('Category / Subtopic', results_page)
         self.assertIn('Topic 0:', results_page)
 
