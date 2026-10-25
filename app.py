@@ -957,7 +957,16 @@ def compare(analysis_id):
                 'topics': reviews,
             }
             set_analysis(analysis_id, analysis)
-            flash('Human topic evaluations saved.', 'success')
+            try:
+                save_human_evaluation_excel(analysis_id, analysis)
+            except Exception:
+                logger.exception('Failed to create human evaluation Excel file for %s', analysis_id)
+                flash(
+                    'Human topic evaluations were saved, but the Excel file could not be created.',
+                    'warning',
+                )
+            else:
+                flash('Human topic evaluations saved. Download the Excel file below.', 'success')
             return redirect(request.url)
 
         if 'manual_file' not in request.files:
@@ -1069,6 +1078,17 @@ def export_report(analysis_id, format_type):
         flash('No results to export.', 'danger')
         return redirect(url_for('upload'))
 
+    if format_type == 'human-evaluation':
+        if not analysis.get('human_review', {}).get('topics'):
+            flash('No saved human evaluation is available to export.', 'warning')
+            return redirect(url_for('compare', analysis_id=analysis_id))
+        filepath = save_human_evaluation_excel(analysis_id, analysis)
+        return send_file(
+            filepath,
+            as_attachment=True,
+            download_name=f'human_evaluation_{analysis_id}.xlsx',
+        )
+
     if format_type == 'csv':
         # Export topics as CSV
         rows = []
@@ -1156,6 +1176,44 @@ def export_report(analysis_id, format_type):
 
     flash('Invalid export format.', 'danger')
     return redirect(url_for('results', analysis_id=analysis_id))
+
+
+def save_human_evaluation_excel(analysis_id, analysis):
+    """Write saved human topic evaluations to an Excel workbook."""
+    human_review = analysis['human_review']
+    topic_names = {
+        str(topic['topic_id']): topic.get('display_name') or f"Topic {topic['topic_id']}"
+        for topic in analysis['topics']
+    }
+    language_pack = get_human_evaluation_language_pack(
+        human_review.get('language', 'multilingual')
+    )
+    assessment_names = {
+        'accurate': language_pack['accurate'],
+        'partially_accurate': language_pack['partially_accurate'],
+        'inaccurate': language_pack['inaccurate'],
+    }
+    rows = [
+        {
+            'Dataset': analysis.get('filename', ''),
+            'Reviewer': human_review.get('reviewer', ''),
+            'Evaluation Language': human_review.get('language', 'multilingual'),
+            'Topic ID': topic_id,
+            'LDA Topic': topic_names.get(topic_id, f'Topic {topic_id}'),
+            'Human Label': review.get('label', ''),
+            'Assessment': assessment_names.get(
+                review.get('assessment'), review.get('assessment', '')
+            ),
+            'Notes': review.get('notes', ''),
+            'Reviewed At': review.get('reviewed_at', ''),
+        }
+        for topic_id, review in human_review['topics'].items()
+    ]
+
+    os.makedirs(RESULTS_FOLDER, exist_ok=True)
+    filepath = os.path.join(RESULTS_FOLDER, f'human_evaluation_{analysis_id}.xlsx')
+    pd.DataFrame(rows).to_excel(filepath, sheet_name='Human Evaluation', index=False)
+    return filepath
 
 
 @app.route('/about')

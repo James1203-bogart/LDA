@@ -230,6 +230,12 @@
                     <i class="bi bi-save me-2"></i><span data-i18n="save_button">{{ human_eval_text.save_button }}</span>
                 </button>
             </form>
+            {% if human_reviewer %}
+            <a href="{{ url_for('export_report', analysis_id=analysis_id, format_type='human-evaluation') }}"
+               class="btn btn-outline-success mt-3">
+                <i class="bi bi-file-earmark-excel me-2"></i>Download Human Evaluation Excel
+            </a>
+            {% endif %}
         </div>
     </div>
 </section>

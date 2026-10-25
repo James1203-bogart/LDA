@@ -131,14 +131,17 @@ def test_compare_displays_pretrained_topic_names_for_saved_analyses(monkeypatch)
     assert 'Topic 3: Commitment and Transparency' in page
 
 
-def test_compare_saves_human_evaluations(monkeypatch):
+def test_compare_saves_human_evaluations(monkeypatch, tmp_path):
     analysis = sample_analysis()
+    analysis['filename'] = 'student_feedback.csv'
     persisted = []
     monkeypatch.setattr(flask_app, 'get_analysis', lambda _: analysis)
     monkeypatch.setattr(flask_app, 'set_analysis', lambda analysis_id, data: persisted.append(data.copy()))
+    monkeypatch.setattr(flask_app, 'RESULTS_FOLDER', str(tmp_path))
     flask_app.app.config['TESTING'] = True
 
-    response = flask_app.app.test_client().post(
+    client = flask_app.app.test_client()
+    response = client.post(
         '/compare/test-analysis',
         data={
             'action': 'save_human_review',
@@ -159,6 +162,22 @@ def test_compare_saves_human_evaluations(monkeypatch):
     assert analysis['human_review']['topics']['1']['label'] == 'Learning facilities'
     assert analysis['human_review']['topics']['1']['notes'] == 'Comments focus mostly on the library.'
     assert analysis['human_review']['topics']['0']['reviewed_at']
+
+    excel_path = tmp_path / 'human_evaluation_test-analysis.xlsx'
+    assert excel_path.is_file()
+    exported = flask_app.pd.read_excel(excel_path, sheet_name='Human Evaluation')
+    assert exported.loc[0, 'Dataset'] == 'student_feedback.csv'
+    assert exported.loc[0, 'Reviewer'] == 'Faculty reviewer'
+    assert exported.loc[0, 'Human Label'] == 'Teaching quality'
+    assert exported.loc[0, 'Assessment'] == 'Accurate'
+    assert exported.loc[1, 'Notes'] == 'Comments focus mostly on the library.'
+
+    page = client.get('/compare/test-analysis').get_data(as_text=True)
+    assert 'Download Human Evaluation Excel' in page
+
+    download = client.get('/export/test-analysis/human-evaluation')
+    assert download.status_code == 200
+    assert download.mimetype == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 
 def test_compare_rejects_invalid_human_assessment(monkeypatch):
