@@ -1,3 +1,4 @@
+import io
 import tempfile
 import unittest
 
@@ -25,7 +26,7 @@ class ModelConfigRouteTests(unittest.TestCase):
         flask_app.ANALYSIS_STORE_DIR = self.original_store_dir
         self.temp_store.cleanup()
 
-    def test_model_config_renders_when_preprocessing_stats_are_missing(self):
+    def test_model_config_route_trains_and_redirects_without_configuration_page(self):
         analysis_store['abc123'] = {
             'processed_texts': [['hello', 'world']],
             'raw_texts': ['hello world'],
@@ -34,8 +35,9 @@ class ModelConfigRouteTests(unittest.TestCase):
 
         response = self.client.get('/model-config/abc123')
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'LDA Model Configuration', response.data)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], '/results/abc123')
+        self.assertEqual(get_analysis('abc123')['num_topics'], 5)
 
     def test_analysis_state_persists_across_restart(self):
         analysis = {'processed_texts': [['hello', 'world']], 'text_count': 1}
@@ -74,7 +76,7 @@ class ModelConfigRouteTests(unittest.TestCase):
             for topic in analysis['topics']
             for word in topic['words']
         }
-        self.assertEqual(analysis['num_topics'], 2)
+        self.assertEqual(analysis['num_topics'], 5)
         self.assertNotIn('baseline_evaluation', analysis)
         self.assertEqual(len(analysis['pretrained_predictions']), len(fruit_docs))
         self.assertEqual(
@@ -114,7 +116,7 @@ class ModelConfigRouteTests(unittest.TestCase):
             'dataset_fingerprint': fingerprint,
             'feedback_column': 'feedback',
             'extra_stopwords': [],
-            'num_topics': 2,
+            'num_topics': 5,
             'topics': [{'topic_id': 0, 'words': ['teaching']}],
             'distribution': [{'topic_id': 0, 'document_count': 2}],
         })
@@ -136,6 +138,39 @@ class ModelConfigRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers['Location'], '/results/existing-results')
         self.assertIsNone(get_analysis('new-upload'))
+
+    def test_upload_runs_feedback_analysis_and_redirects_to_five_topic_results(self):
+        csv_content = (
+            'year_level,feedback\n'
+            '"1st Year","Clear teaching helps students understand difficult lessons"\n'
+            '"2nd Year","Helpful examples make science concepts easier to learn"\n'
+            '"3rd Year","More assignments improve writing and research skills"\n'
+            '"4th Year","Classroom discussions encourage thoughtful student questions"\n'
+            '"1st Year","Better course materials support learning and academic progress"\n'
+        )
+
+        response = self.client.post(
+            '/upload',
+            data={
+                'upload_mode': 'file',
+                'file': (io.BytesIO(csv_content.encode('utf-8')), 'feedback.csv'),
+            },
+            content_type='multipart/form-data',
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertRegex(response.headers['Location'], r'^/results/[0-9a-f]{32}$')
+        analysis_id = response.headers['Location'].rsplit('/', 1)[-1]
+        analysis = get_analysis(analysis_id)
+        self.assertEqual(analysis['feedback_column'], 'feedback')
+        self.assertEqual(analysis['num_topics'], 5)
+        self.assertEqual(len(analysis['topics']), 5)
+        self.assertEqual(len(analysis['distribution']), 5)
+        results_response = self.client.get(response.headers['Location'])
+        self.assertEqual(results_response.status_code, 200)
+        results_page = results_response.get_data(as_text=True)
+        self.assertIn('<div class="step-circle">1</div>', results_page)
+        self.assertIn('<div class="step-circle">5</div>', results_page)
 
     def test_same_filename_with_changed_file_contents_is_not_reused(self):
         previous = pd.DataFrame({'feedback': ['clear explanations']})

@@ -23,8 +23,7 @@ from werkzeug.utils import secure_filename
 
 from config import (
     UPLOAD_FOLDER, RESULTS_FOLDER, ALLOWED_EXTENSIONS,
-    SECRET_KEY, MAX_CONTENT_LENGTH, DEFAULT_NUM_TOPICS,
-    MIN_TOPICS, MAX_TOPICS, MAX_DOCUMENTS
+    SECRET_KEY, MAX_CONTENT_LENGTH, MAX_DOCUMENTS
 )
 from modules.preprocessing import TextPreprocessor
 from modules.topic_modeling import LDATopicModeler
@@ -105,6 +104,7 @@ except OSError:
     ANALYSIS_STORE_DIR = '/tmp'
 
 analysis_store = {}
+FIXED_NUM_TOPICS = 5
 
 
 def allowed_file(filename):
@@ -230,6 +230,145 @@ def find_matching_completed_analysis(analysis, num_topics):
             return completed['analysis_id']
 
     return None
+
+
+def detect_feedback_column(dataframe):
+    """Choose the feedback column automatically, preferring its header name."""
+    columns = list(dataframe.columns)
+    normalized_columns = {
+        str(column).strip().casefold(): column
+        for column in columns
+    }
+
+    if 'feedback' in normalized_columns:
+        return normalized_columns['feedback']
+
+    named_feedback_columns = [
+        column for column in columns
+        if 'feedback' in str(column).strip().casefold()
+    ]
+    if named_feedback_columns:
+        return named_feedback_columns[0]
+
+    text_columns = dataframe.select_dtypes(include=['object', 'string']).columns.tolist()
+    if not text_columns:
+        raise ValueError('No text column was found in the uploaded dataset.')
+
+    def average_text_length(column):
+        values = dataframe[column].dropna().astype(str)
+        return values.str.len().mean() if not values.empty else 0
+
+    return max(text_columns, key=average_text_length)
+
+
+def prepare_feedback_analysis(analysis_id, analysis, feedback_column):
+    """Select and preprocess feedback before automatically training the model."""
+    dataframe = get_dataframe_from_analysis(analysis)
+    analysis['feedback_column'] = feedback_column
+    analysis['rating_constructs'] = analyze_rating_constructs(
+        dataframe, excluded_columns={feedback_column}
+    )
+
+    original_texts = dataframe[feedback_column].dropna().astype(str).tolist()
+    analysis['original_text_count'] = len(original_texts)
+    analysis['raw_texts'] = original_texts[:MAX_DOCUMENTS]
+    analysis['text_count'] = len(analysis['raw_texts'])
+    analysis['preview'] = analysis['raw_texts'][:10]
+
+    preprocessor = TextPreprocessor()
+    processed = preprocessor.preprocess_corpus(analysis['raw_texts'])
+    raw_and_processed = [
+        (raw, tokens)
+        for raw, tokens in zip(analysis['raw_texts'], processed)
+        if tokens
+    ]
+    if not raw_and_processed:
+        raise ValueError('All feedback entries were empty after preprocessing.')
+
+    analysis['filtered_raw'] = [raw for raw, _ in raw_and_processed]
+    analysis['processed_texts'] = [tokens for _, tokens in raw_and_processed]
+    analysis['preprocessing_stats'] = preprocessor.get_preprocessing_stats(
+        analysis['raw_texts'], processed
+    )
+    analysis['extra_stopwords'] = []
+    analysis['preprocess_preview'] = [
+        {'original': raw, 'tokens': ' '.join(tokens)}
+        for raw, tokens in raw_and_processed[:5]
+    ]
+    try:
+        analysis['sentiments'] = analyze_sentiments(analysis['filtered_raw'])
+    except Exception as exc:
+        logger.warning('Sentiment analysis during upload failed: %s', exc)
+        analysis['sentiments'] = []
+
+    set_analysis(analysis_id, analysis)
+
+
+def train_feedback_analysis(analysis_id, analysis):
+    """Train and persist the fixed five-topic model, reusing matching results."""
+    matching_analysis_id = find_matching_completed_analysis(
+        analysis, FIXED_NUM_TOPICS
+    )
+    if matching_analysis_id:
+        discard_analysis(analysis_id)
+        return matching_analysis_id
+
+    processed_texts = analysis['processed_texts']
+    modeler = LDATopicModeler()
+    modeler.build_corpus(processed_texts, min_df=1, max_df=1.0)
+    analysis['topics'] = modeler.train_model(num_topics=FIXED_NUM_TOPICS)
+    analysis['num_topics'] = FIXED_NUM_TOPICS
+    analysis['dominant_topics'] = modeler.get_dominant_topics()
+
+    classifier = PretrainedFeedbackModel()
+    analysis['pretrained_predictions'] = classifier.classify_documents(
+        analysis.get('filtered_raw', [])
+    )
+    analysis['category_summary'] = classifier.summarize(
+        analysis['pretrained_predictions']
+    )
+
+    from collections import Counter, defaultdict
+    topic_counts = Counter(
+        item['dominant_topic'] for item in analysis['dominant_topics']
+    )
+    analysis['distribution'] = [
+        {
+            'topic_id': topic_id,
+            'document_count': topic_counts.get(topic_id, 0),
+            'percentage': round(
+                topic_counts.get(topic_id, 0) / max(len(processed_texts), 1) * 100,
+                2,
+            ),
+        }
+        for topic_id in range(FIXED_NUM_TOPICS)
+    ]
+
+    evaluator = ModelEvaluator(
+        modeler.model,
+        modeler.dtm,
+        modeler.feature_names,
+        processed_texts,
+    )
+    analysis['evaluation'] = evaluator.full_evaluation()
+
+    topic_sentiments = defaultdict(list)
+    for item in analysis['dominant_topics']:
+        index = item['document_index']
+        if index < len(analysis.get('sentiments', [])):
+            score = analysis['sentiments'][index]
+            if score is not None:
+                topic_sentiments[item['dominant_topic']].append(
+                    score.get('compound', 0.0)
+                )
+    analysis['per_topic_sentiment'] = {
+        topic_id: round(sum(scores) / len(scores), 4)
+        for topic_id, scores in topic_sentiments.items()
+    }
+    analysis.pop('baseline_evaluation', None)
+    analysis.pop('predefined_results', None)
+    set_analysis(analysis_id, analysis)
+    return analysis_id
 
 
 def extract_google_sheet_id(url):
@@ -498,9 +637,44 @@ def upload():
         }
         set_analysis(analysis_id, analysis_data)
 
+        try:
+            feedback_column = detect_feedback_column(df)
+        except ValueError as e:
+            flash(str(e) + ' Please upload a file with a text feedback column.', 'danger')
+            return redirect(url_for('upload'))
+
+        try:
+            prepare_feedback_analysis(analysis_id, analysis_data, feedback_column)
+        except ValueError as e:
+            logger.warning('Could not preprocess uploaded feedback: %s', e)
+            flash(str(e), 'danger')
+            return redirect(url_for('upload'))
+        except Exception as e:
+            logger.exception('Error preparing uploaded feedback: %s', e)
+            flash(f'Error processing uploaded feedback: {str(e)}', 'danger')
+            return redirect(url_for('upload'))
+
+        if analysis_data['original_text_count'] > MAX_DOCUMENTS:
+            flash(
+                f'Dataset has {analysis_data["original_text_count"]} non-empty entries. '
+                f'Only the first {MAX_DOCUMENTS} documents were processed.',
+                'warning',
+            )
+
+        try:
+            result_id = train_feedback_analysis(analysis_id, analysis_data)
+        except Exception as e:
+            logger.exception('Error training LDA model after upload: %s', e)
+            flash(f'Error training the five-topic model: {str(e)}', 'danger')
+            return redirect(url_for('upload'))
+
         source_label = 'Google Sheets' if upload_mode == 'google' else 'file'
-        flash(f'Dataset loaded from {source_label} successfully! ({len(df)} rows)', 'success')
-        return redirect(url_for('select_column', analysis_id=analysis_id))
+        flash(
+            f'Dataset loaded from {source_label} and analyzed with 5 topics '
+            f'using the "{feedback_column}" column.',
+            'success',
+        )
+        return redirect(url_for('results', analysis_id=result_id))
 
     return render_template('upload.html')
 
@@ -640,112 +814,28 @@ def preprocess(analysis_id):
 
 @app.route('/model-config/<analysis_id>', methods=['GET', 'POST'])
 def model_config(analysis_id):
-    """Train a topic model using the uploaded feedback."""
+    """Train the fixed five-topic model without showing a configuration page."""
     analysis = get_analysis(analysis_id)
     if not analysis or 'processed_texts' not in analysis:
         flash('Please complete preprocessing first.', 'danger')
         return redirect(url_for('upload'))
 
-    processed_texts = analysis['processed_texts']
-    max_topics = min(MAX_TOPICS, len(processed_texts))
-    min_topics = min(MIN_TOPICS, max_topics)
+    try:
+        result_id = train_feedback_analysis(analysis_id, analysis)
+        if result_id != analysis_id:
+            flash('Existing results found for this same file. Showing the saved results.', 'success')
+        else:
+            flash('Topic model trained on your feedback with 5 topics.', 'success')
+        return redirect(url_for('results', analysis_id=result_id))
 
-    if request.method == 'POST':
-        try:
-            num_topics = int(request.form.get('num_topics', DEFAULT_NUM_TOPICS))
-            if not min_topics <= num_topics <= max_topics:
-                raise ValueError(
-                    f'Choose between {min_topics} and {max_topics} topics for this dataset.'
-                )
-
-            matching_analysis_id = find_matching_completed_analysis(analysis, num_topics)
-            if matching_analysis_id:
-                discard_analysis(analysis_id)
-                flash('Existing results found for this same file. Showing the saved results.', 'success')
-                return redirect(url_for('results', analysis_id=matching_analysis_id))
-
-            modeler = LDATopicModeler()
-            modeler.build_corpus(processed_texts, min_df=1, max_df=1.0)
-            analysis['topics'] = modeler.train_model(num_topics=num_topics)
-            analysis['num_topics'] = num_topics
-            analysis['dominant_topics'] = modeler.get_dominant_topics()
-            classifier = PretrainedFeedbackModel()
-            analysis['pretrained_predictions'] = classifier.classify_documents(
-                analysis.get('filtered_raw', [])
-            )
-            analysis['category_summary'] = classifier.summarize(
-                analysis['pretrained_predictions']
-            )
-
-            from collections import Counter, defaultdict
-            topic_counts = Counter(
-                item['dominant_topic'] for item in analysis['dominant_topics']
-            )
-            analysis['distribution'] = [
-                {
-                    'topic_id': topic_id,
-                    'document_count': topic_counts.get(topic_id, 0),
-                    'percentage': round(
-                        topic_counts.get(topic_id, 0) / max(len(processed_texts), 1) * 100,
-                        2,
-                    ),
-                }
-                for topic_id in range(num_topics)
-            ]
-
-            evaluator = ModelEvaluator(
-                modeler.model,
-                modeler.dtm,
-                modeler.feature_names,
-                processed_texts,
-            )
-            analysis['evaluation'] = evaluator.full_evaluation()
-
-            topic_sentiments = defaultdict(list)
-            for item in analysis['dominant_topics']:
-                index = item['document_index']
-                if index < len(analysis.get('sentiments', [])):
-                    score = analysis['sentiments'][index]
-                    if score is not None:
-                        topic_sentiments[item['dominant_topic']].append(
-                            score.get('compound', 0.0)
-                        )
-            analysis['per_topic_sentiment'] = {
-                topic_id: round(sum(scores) / len(scores), 4)
-                for topic_id, scores in topic_sentiments.items()
-            }
-            analysis.pop('baseline_evaluation', None)
-            analysis.pop('predefined_results', None)
-            set_analysis(analysis_id, analysis)
-            flash(f'Topic model trained on your feedback with {num_topics} topics.', 'success')
-            return redirect(url_for('results', analysis_id=analysis_id))
-
-        except ValueError as e:
-            flash(f'Invalid model configuration: {str(e)}', 'danger')
-            return redirect(request.url)
-        except Exception as e:
-            logger.exception('Error training LDA model: %s', e)
-            flash(f'Error training model: {str(e)}. Please try again with different settings.', 'danger')
-            return redirect(request.url)
-
-    stats = analysis.get('preprocessing_stats') or {
-        'total_documents': analysis.get('text_count', 0),
-        'empty_documents_after_preprocessing': 0,
-        'avg_words_before': 0,
-        'avg_tokens_after': 0,
-        'vocabulary_size': 0,
-        'total_tokens': 0,
-    }
-
-    return render_template(
-        'model_config.html',
-        analysis_id=analysis_id,
-        stats=stats,
-        preview=analysis.get('preprocess_preview', []),
-        default_topics=min(DEFAULT_NUM_TOPICS, max_topics),
-        min_topics=min_topics,
-        max_topics=max_topics,
-    )
+    except ValueError as e:
+        logger.warning('Could not train five-topic model: %s', e)
+        flash(f'Could not generate results: {str(e)}', 'danger')
+        return redirect(url_for('upload'))
+    except Exception as e:
+        logger.exception('Error training LDA model: %s', e)
+        flash(f'Error training the five-topic model: {str(e)}', 'danger')
+        return redirect(url_for('upload'))
 
 
 @app.route('/results/<analysis_id>')
