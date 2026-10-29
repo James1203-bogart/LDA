@@ -240,6 +240,13 @@ def detect_feedback_column(dataframe):
         for column in columns
     }
 
+    comments_and_suggestions_columns = [
+        column for column in columns
+        if 'comments and suggestions' in str(column).strip().casefold()
+    ]
+    if comments_and_suggestions_columns:
+        return comments_and_suggestions_columns[0]
+
     if 'feedback' in normalized_columns:
         return normalized_columns['feedback']
 

@@ -139,6 +139,21 @@ class ModelConfigRouteTests(unittest.TestCase):
         self.assertEqual(response.headers['Location'], '/results/existing-results')
         self.assertIsNone(get_analysis('new-upload'))
 
+    def test_upload_prefers_comments_and_suggestions_over_feedback_column(self):
+        question_column = (
+            'Comments and Suggestions (This part of the survey is important so '
+            'therefore we appreciate if you could answer this part with meaningful feedback.)'
+        )
+        dataframe = pd.DataFrame({
+            'feedback': ['generic feedback'],
+            question_column: ['The lessons are clear and engaging.'],
+        })
+
+        self.assertEqual(
+            flask_app.detect_feedback_column(dataframe),
+            question_column,
+        )
+
     def test_upload_runs_feedback_analysis_and_redirects_to_five_topic_results(self):
         csv_content = (
             'year_level,feedback\n'
