@@ -52,6 +52,124 @@
                     <p style="color:var(--c-text-secondary);font-size:.9rem" data-i18n="manual_compare">
                         Compare the manually coded themes with the LDA-generated topics to validate the automated analysis.
                     </p>
+                    <form method="POST" class="mt-3">
+                        <input type="hidden" name="action" value="configure_manual_evaluation">
+                        <div class="mb-3">
+                            <label for="manual_text_column" class="form-label">Feedback text column</label>
+                            <select class="form-select" id="manual_text_column" name="manual_text_column" required>
+                                <option value="">Select feedback column</option>
+                                {% for column in manual_columns %}
+                                <option value="{{ column }}" {% if manual_evaluation_columns.get('text') == column %}selected{% endif %}>{{ column }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="manual_label_column" class="form-label">Manual theme/label column</label>
+                            <select class="form-select" id="manual_label_column" name="manual_label_column" required>
+                                <option value="">Select manual label column</option>
+                                {% for column in manual_columns %}
+                                <option value="{{ column }}" {% if manual_evaluation_columns.get('label') == column %}selected{% endif %}>{{ column }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <small class="d-block mb-3 text-muted">
+                            Scores use the LDA model's dominant topic for each matched feedback row.
+                            Since topic IDs are arbitrary, topic-to-theme alignment is recalculated without each scored row.
+                        </small>
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="bi bi-calculator me-2"></i>Calculate Enhanced LDA metrics
+                        </button>
+                    </form>
+                    {% if manual_evaluation_error %}
+                    <div class="alert alert-warning mt-3 mb-0" role="alert">{{ manual_evaluation_error }}</div>
+                    {% endif %}
+                    {% if manual_evaluation %}
+                    <div class="mt-4" aria-labelledby="classification-metrics-title">
+                        <h4 id="classification-metrics-title">Enhanced LDA Model Metrics</h4>
+                        <p class="text-muted">
+                            Evaluated {{ manual_evaluation.evaluated_documents }} matched feedback rows using the
+                            model's actual dominant-topic assignments. Unlabeled or unmatched: {{ manual_evaluation.unlabeled_documents }};
+                            ambiguous manual labels: {{ manual_evaluation.conflicting_labels }};
+                            rows without an LDA prediction: {{ manual_evaluation.missing_predictions }}.
+                        </p>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Metric</th>
+                                        <th>Accuracy</th>
+                                        <th>Macro precision</th>
+                                        <th>Macro recall</th>
+                                        <th>Macro F1</th>
+                                        <th>Weighted precision</th>
+                                        <th>Weighted recall</th>
+                                        <th>Weighted F1</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <th scope="row">Score</th>
+                                        <td>{{ '%.2f'|format(manual_evaluation.accuracy * 100) }}%</td>
+                                        <td>{{ '%.2f'|format(manual_evaluation.macro_precision * 100) }}%</td>
+                                        <td>{{ '%.2f'|format(manual_evaluation.macro_recall * 100) }}%</td>
+                                        <td>{{ '%.2f'|format(manual_evaluation.macro_f1 * 100) }}%</td>
+                                        <td>{{ '%.2f'|format(manual_evaluation.weighted_precision * 100) }}%</td>
+                                        <td>{{ '%.2f'|format(manual_evaluation.weighted_recall * 100) }}%</td>
+                                        <td>{{ '%.2f'|format(manual_evaluation.weighted_f1 * 100) }}%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <h5 class="mt-3">Per-theme scores</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Manual theme</th>
+                                        <th>Precision</th>
+                                        <th>Recall</th>
+                                        <th>F1</th>
+                                        <th>Support</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in manual_evaluation.per_class %}
+                                    <tr>
+                                        <th scope="row">{{ item.label }}</th>
+                                        <td>{{ '%.2f'|format(item.precision * 100) }}%</td>
+                                        <td>{{ '%.2f'|format(item.recall * 100) }}%</td>
+                                        <td>{{ '%.2f'|format(item.f1 * 100) }}%</td>
+                                        <td>{{ item.support }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <h5 class="mt-3">Confusion matrix</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Actual \ Predicted</th>
+                                        {% for label in manual_evaluation.labels %}
+                                        <th scope="col">{{ label }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in manual_evaluation.confusion_matrix %}
+                                    <tr>
+                                        <th scope="row">{{ manual_evaluation.labels[loop.index0] }}</th>
+                                        {% for count in row %}
+                                        <td>{{ count }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
                 {% else %}
                     <p style="color:var(--c-text-secondary);font-size:.9rem" class="mb-3" data-i18n="manual_prompt">
                         Upload a file with manually coded themes to compare with LDA results.
@@ -101,7 +219,7 @@
                                     <th scope="row">NPMI coherence</th>
                                     <td>{{ model_comparison.current.coherence_c_v if model_comparison and model_comparison.current.coherence_c_v is defined else 'N/A' }}</td>
                                     <td>{{ model_comparison.baseline.coherence_c_v if model_comparison and model_comparison.baseline.coherence_c_v is defined else 'N/A' }}</td>
-                                    <td>0.35 (Lower)</td>
+                                    <td>0.35 (fictional)</td>
                                     <td>Higher</td>
                                 </tr>
                                 <tr>
@@ -116,6 +234,9 @@
                     </div>
                     <small class="d-block mt-3" style="color:var(--c-text-muted)">
                         Coherence and perplexity are not accuracy, precision, recall, or F1. Those require human-verified labels.
+                    </small>
+                    <small class="d-block mt-2" style="color:var(--c-text-muted)">
+                        No BERT model was run. Its displayed value is fictional and included only as a demo placeholder.
                     </small>
                 </div>
             </div>

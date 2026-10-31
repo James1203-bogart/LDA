@@ -1,4 +1,7 @@
 import app as flask_app
+import pandas as pd
+
+from modules.evaluation import evaluate_topic_assignments
 
 
 def sample_analysis():
@@ -202,3 +205,56 @@ def test_compare_rejects_invalid_human_assessment(monkeypatch):
     assert response.status_code == 302
     assert not persisted
     assert 'human_review' not in analysis
+
+
+def test_topic_assignment_metrics_use_leave_one_out_topic_alignment():
+    result = evaluate_topic_assignments(
+        ['Teaching', 'Teaching', 'Facilities', 'Facilities'],
+        [0, 0, 1, 1],
+    )
+
+    assert result['accuracy'] == 1.0
+    assert result['macro_precision'] == 1.0
+    assert result['macro_recall'] == 1.0
+    assert result['macro_f1'] == 1.0
+    assert result['confusion_matrix'] == [[2, 0], [0, 2]]
+
+
+def test_compare_scores_actual_lda_topics_without_reviewer_topic_labels(monkeypatch):
+    analysis = sample_analysis()
+    analysis['filtered_raw'] = [
+        'Teaching comment one',
+        'Teaching comment two',
+        'Facilities comment one',
+        'Facilities comment two',
+    ]
+    analysis['dominant_topics'] = [
+        {'document_index': 0, 'dominant_topic': 0},
+        {'document_index': 1, 'dominant_topic': 0},
+        {'document_index': 2, 'dominant_topic': 1},
+        {'document_index': 3, 'dominant_topic': 1},
+    ]
+    analysis['manual_df'] = pd.DataFrame({
+        'Comment': [
+            ' teaching comment one ',
+            'TEACHING COMMENT TWO',
+            'Facilities comment one',
+            'Facilities comment two',
+        ],
+        'Manual theme': ['Teaching', 'Teaching', 'Facilities', 'Facilities'],
+    })
+    analysis['manual_columns'] = ['Comment', 'Manual theme']
+    analysis['manual_evaluation_columns'] = {
+        'text': 'Comment',
+        'label': 'Manual theme',
+    }
+    monkeypatch.setattr(flask_app, 'get_analysis', lambda _: analysis)
+    flask_app.app.config['TESTING'] = True
+
+    response = flask_app.app.test_client().get('/compare/test-analysis')
+
+    assert response.status_code == 200
+    page = response.get_data(as_text=True)
+    assert 'Enhanced LDA Model Metrics' in page
+    assert 'actual dominant-topic assignments' in page
+    assert '100.00%' in page

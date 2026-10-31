@@ -27,7 +27,7 @@ from config import (
 )
 from modules.preprocessing import TextPreprocessor
 from modules.topic_modeling import LDATopicModeler
-from modules.evaluation import ModelEvaluator
+from modules.evaluation import ModelEvaluator, evaluate_topic_assignments
 from modules.visualization import (
     generate_topic_bar_chart,
     generate_distribution_pie_chart, generate_coherence_line_chart,
@@ -69,6 +69,83 @@ def _apply_pretrained_categories(analysis):
     analysis['pretrained_predictions'] = predictions
     analysis['category_summary'] = classifier.summarize(predictions)
     return True
+
+
+def _normalize_evaluation_value(value):
+    """Normalize labels and feedback text for stable manual-data matching."""
+    if value is None or pd.isna(value):
+        return ''
+    return ' '.join(str(value).split()).casefold()
+
+
+def _build_manual_classification_evaluation(analysis):
+    """Evaluate LDA dominant topics against matched manual feedback labels."""
+    manual_df = analysis.get('manual_df')
+    columns = analysis.get('manual_evaluation_columns', {})
+    text_column = columns.get('text')
+    label_column = columns.get('label')
+    if manual_df is None or text_column not in manual_df.columns or label_column not in manual_df.columns:
+        raise ValueError('Select a feedback-text column and a manual-label column first.')
+    if text_column == label_column:
+        raise ValueError('Choose different columns for feedback text and manual labels.')
+
+    gold_labels_by_text = {}
+    display_labels = {}
+    for text, label in zip(manual_df[text_column], manual_df[label_column]):
+        normalized_text = _normalize_evaluation_value(text)
+        normalized_label = _normalize_evaluation_value(label)
+        if normalized_text and normalized_label:
+            display_labels.setdefault(normalized_label, ' '.join(str(label).split()))
+            gold_labels_by_text.setdefault(normalized_text, set()).add(normalized_label)
+
+    topic_by_document = {}
+    for item in analysis.get('dominant_topics', []):
+        document_index = item.get('document_index', item.get('index'))
+        topic_id = item.get('dominant_topic', item.get('topic'))
+        if isinstance(document_index, int) and topic_id is not None:
+            topic_by_document[document_index] = topic_id
+
+    y_true = []
+    topic_ids = []
+    unlabeled_documents = 0
+    missing_predictions = 0
+    conflicting_labels = 0
+    for document_index, text in enumerate(analysis.get('filtered_raw', [])):
+        labels_for_text = gold_labels_by_text.get(
+            _normalize_evaluation_value(text), set()
+        )
+        if not labels_for_text:
+            unlabeled_documents += 1
+            continue
+        if len(labels_for_text) > 1:
+            conflicting_labels += 1
+            continue
+
+        topic_id = topic_by_document.get(document_index)
+        if topic_id is None:
+            missing_predictions += 1
+            continue
+
+        normalized_label = next(iter(labels_for_text))
+        y_true.append(display_labels[normalized_label])
+        topic_ids.append(topic_id)
+
+    if len(y_true) < 2:
+        raise ValueError(
+            'At least two matched feedback rows with one manual label each and '
+            'an LDA topic prediction are needed to calculate metrics.'
+        )
+
+    result = evaluate_topic_assignments(y_true, topic_ids)
+    result.update({
+        'evaluated_documents': len(y_true),
+        'unlabeled_documents': unlabeled_documents,
+        'missing_predictions': missing_predictions,
+        'conflicting_labels': conflicting_labels,
+        'text_column': text_column,
+        'label_column': label_column,
+    })
+    return result
 
 
 # Configure logging
@@ -1032,6 +1109,27 @@ def compare(analysis_id):
     _apply_pretrained_topic_names(analysis)
 
     if request.method == 'POST':
+        if request.form.get('action') == 'configure_manual_evaluation':
+            text_column = request.form.get('manual_text_column', '')
+            label_column = request.form.get('manual_label_column', '')
+            manual_df = analysis.get('manual_df')
+            available_columns = {
+                str(column) for column in manual_df.columns
+            } if manual_df is not None else set()
+            if text_column not in available_columns or label_column not in available_columns:
+                flash('Select valid feedback-text and manual-label columns.', 'danger')
+                return redirect(request.url)
+            if text_column == label_column:
+                flash('Choose different columns for feedback text and manual labels.', 'danger')
+                return redirect(request.url)
+
+            analysis['manual_evaluation_columns'] = {
+                'text': text_column,
+                'label': label_column,
+            }
+            set_analysis(analysis_id, analysis)
+            return redirect(request.url)
+
         if request.form.get('action') == 'save_human_review':
             assessments = {'accurate', 'partially_accurate', 'inaccurate'}
             allowed_languages = {'multilingual', 'tagalog', 'english', 'german', 'russian', 'arabic'}
@@ -1103,8 +1201,13 @@ def compare(analysis_id):
             flash(f'Error reading file: {e}', 'danger')
             return redirect(request.url)
 
+        manual_df.columns = [str(column) for column in manual_df.columns]
+        if manual_df.columns.duplicated().any():
+            flash('The manual coding file must have unique column names.', 'danger')
+            return redirect(request.url)
         analysis['manual_df'] = manual_df
         analysis['manual_columns'] = list(manual_df.columns)
+        analysis.pop('manual_evaluation_columns', None)
         set_analysis(analysis_id, analysis)
         flash('Manual coding file uploaded.', 'success')
 
@@ -1140,6 +1243,15 @@ def compare(analysis_id):
 
     human_review_language = human_review.get('language', 'multilingual')
     human_eval_text = get_human_evaluation_language_pack(human_review_language)
+
+    manual_evaluation = None
+    manual_evaluation_error = None
+    manual_evaluation_columns = analysis.get('manual_evaluation_columns', {})
+    if manual_evaluation_columns:
+        try:
+            manual_evaluation = _build_manual_classification_evaluation(analysis)
+        except ValueError as exc:
+            manual_evaluation_error = str(exc)
 
     model_comparison = None
     if analysis.get('processed_texts') and analysis.get('num_topics'):
@@ -1177,6 +1289,9 @@ def compare(analysis_id):
         human_reviewer=human_review.get('reviewer', ''),
         human_review_language=human_review_language,
         human_eval_text=human_eval_text,
+        manual_evaluation_columns=manual_evaluation_columns,
+        manual_evaluation=manual_evaluation,
+        manual_evaluation_error=manual_evaluation_error,
         model_comparison=model_comparison,
     )
 
